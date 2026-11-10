@@ -19,9 +19,9 @@ class ModelTest {
                 new Step.Loop(6, "for (Block block : blocks)", List.of(
                         new Step.Branch(7, null, List.of(
                                 new Step.Arm("block.isExit()", List.of(new Step.Return(8))),
-                                new Step.Arm(null, List.of(new Step.Call(10, "a.Handler#handle(Context)", "handler.handle(context)"))))))),
+                                new Step.Arm(null, List.of(new Step.Call(10, "a.Handler#handle(Context)", "handler.handle(context)", false))))))),
                 new Step.Branch(12, "kind", List.of(
-                        new Step.Arm("A, B", List.of(new Step.Call(13, null, "queue.poll()"))),
+                        new Step.Arm("A, B", List.of(new Step.Call(13, null, "queue.poll()", false))),
                         new Step.Arm(null, List.of(new Step.Throw(15, "new IllegalStateException()"))))));
         Edge call = new Edge(EdgeKind.CALL, walk.id(), handle.id());
         Edge dependency = new Edge(EdgeKind.DEPENDENCY, walker.id(), handler.id());

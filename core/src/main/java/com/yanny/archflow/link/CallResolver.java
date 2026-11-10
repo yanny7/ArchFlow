@@ -13,7 +13,17 @@ import com.yanny.archflow.link.TypeIndex.TypeInfo;
 import java.util.List;
 
 final class CallResolver {
+    record Target(String id, boolean external) {
+        static final Target UNKNOWN = new Target(null, false);
+        static final Target EXTERNAL = new Target(null, true);
+    }
+
     private record Typed(TypeInfo info, TypeRef ref, TypeInfo scope) {
+        static final Typed EXTERNAL = new Typed(null, null, null);
+    }
+
+    private record Found(MethodHit hit) {
+        static final Found EXTERNAL = new Found(null);
     }
 
     private final TypeIndex index;
@@ -22,10 +32,13 @@ final class CallResolver {
         this.index = index;
     }
 
-    String target(FlowFact.Call call, TypeInfo current) {
+    Target target(FlowFact.Call call, TypeInfo current) {
         if (!call.name().equals(MethodFacts.CONSTRUCTOR)) {
-            MethodHit hit = method(call.receiver(), call.name(), call.args(), current);
-            return hit == null ? null : id(hit);
+            Found found = method(call.receiver(), call.name(), call.args(), current);
+            if (found == null) {
+                return Target.UNKNOWN;
+            }
+            return found.hit() == null ? Target.EXTERNAL : new Target(id(found.hit()), false);
         }
         TypeInfo owner = switch (call.receiver()) {
             case Receiver.This ignored -> current;
@@ -34,21 +47,25 @@ final class CallResolver {
             default -> null;
         };
         if (owner == null) {
-            return null;
+            return call.receiver() instanceof Receiver.Unknown ? Target.UNKNOWN : Target.EXTERNAL;
         }
         MethodHit constructor = choose(index.constructors(owner, call.args()), call.args(), current);
-        return constructor == null ? owner.id() : id(constructor);
+        return new Target(constructor == null ? owner.id() : id(constructor), false);
     }
 
-    private MethodHit method(Receiver receiver, String name, List<Receiver> args, TypeInfo current) {
+    private Found method(Receiver receiver, String name, List<Receiver> args, TypeInfo current) {
         if (!(receiver instanceof Receiver.Implicit)) {
             Typed owner = type(receiver, current);
-            return owner == null || owner.info() == null ? null : choose(index.methods(owner.info(), name, args), args, current);
+            if (owner == null) {
+                return null;
+            }
+            MethodHit hit = owner.info() == null ? null : choose(index.methods(owner.info(), name, args), args, current);
+            return hit == null ? Found.EXTERNAL : new Found(hit);
         }
         for (TypeInfo type = current; type != null; type = type.enclosing()) {
             MethodHit hit = choose(index.methods(type, name, args), args, current);
             if (hit != null) {
-                return hit;
+                return new Found(hit);
             }
         }
         for (Import imp : current.file().imports()) {
@@ -62,10 +79,10 @@ final class CallResolver {
             TypeInfo type = typeName == null ? null : index.get(typeName);
             MethodHit hit = type == null ? null : choose(index.methods(type, name, args), args, current);
             if (hit != null) {
-                return hit;
+                return new Found(hit);
             }
         }
-        return null;
+        return Found.EXTERNAL;
     }
 
     private MethodHit choose(List<MethodHit> candidates, List<Receiver> args, TypeInfo current) {
@@ -111,19 +128,22 @@ final class CallResolver {
             case Receiver.Name name -> name(name.name(), current);
             case Receiver.Field field -> field(field, current);
             case Receiver.Result result -> {
-                MethodHit hit = method(result.receiver(), result.method(), result.args(), current);
-                yield hit == null ? null : of(hit.method().returnType(), hit.owner());
+                Found found = method(result.receiver(), result.method(), result.args(), current);
+                if (found == null || found.hit() == null) {
+                    yield found == null ? null : Typed.EXTERNAL;
+                }
+                yield of(found.hit().method().returnType(), found.hit().owner());
             }
             case Receiver.Element element -> {
                 Typed container = type(element.receiver(), current);
                 if (container == null || container.ref() == null) {
-                    yield null;
+                    yield container == null ? null : Typed.EXTERNAL;
                 }
                 TypeRef ref = container.ref();
                 if (ref.dims() > 0) {
                     yield of(ref.withDims(-1), container.scope());
                 }
-                yield ref.args().size() == 1 ? of(ref.args().getFirst(), container.scope()) : null;
+                yield ref.args().size() == 1 ? of(ref.args().getFirst(), container.scope()) : Typed.EXTERNAL;
             }
             case Receiver.Implicit ignored -> null;
             case Receiver.Unknown ignored -> null;
@@ -138,7 +158,14 @@ final class CallResolver {
             }
         }
         TypeInfo type = index.resolve(name, current);
-        return type == null ? null : new Typed(type, null, null);
+        if (type != null) {
+            return new Typed(type, null, null);
+        }
+        return isTypeName(name) ? Typed.EXTERNAL : null;
+    }
+
+    private static boolean isTypeName(String name) {
+        return Character.isUpperCase(name.charAt(0));
     }
 
     private Typed field(Receiver.Field field, TypeInfo current) {
@@ -149,11 +176,17 @@ final class CallResolver {
                 return of(hit.field().type(), hit.owner());
             }
             TypeInfo nested = index.get(base.info().id() + "." + field.name());
-            return nested == null ? null : new Typed(nested, null, null);
+            return nested == null ? Typed.EXTERNAL : new Typed(nested, null, null);
+        }
+        if (base != null) {
+            return Typed.EXTERNAL;
         }
         String qualified = qualifiedName(field);
         TypeInfo type = qualified == null ? null : index.get(qualified);
-        return type == null ? null : new Typed(type, null, null);
+        if (type != null) {
+            return new Typed(type, null, null);
+        }
+        return qualified != null && isTypeName(field.name()) ? Typed.EXTERNAL : null;
     }
 
     private static String qualifiedName(Receiver receiver) {

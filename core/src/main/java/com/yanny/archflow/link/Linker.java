@@ -111,7 +111,8 @@ public final class Linker {
     private Step step(FlowFact fact, TypeInfo type, String method) {
         return switch (fact) {
             case FlowFact.Call call -> {
-                String target = resolver.target(call, type);
+                CallResolver.Target resolved = resolver.target(call, type);
+                String target = resolved.id();
                 if (target != null) {
                     edges.add(new Edge(EdgeKind.CALL, method, target));
                     String owner = target.contains("#") ? target.substring(0, target.indexOf('#')) : target;
@@ -119,7 +120,7 @@ public final class Linker {
                         edges.add(new Edge(EdgeKind.DEPENDENCY, type.id(), owner));
                     }
                 }
-                yield new Step.Call(call.line(), target, call.text());
+                yield new Step.Call(call.line(), target, call.text(), resolved.external());
             }
             case FlowFact.Branch branch -> new Step.Branch(branch.line(), branch.subject(), branch.arms().stream()
                     .map(arm -> new Step.Arm(arm.condition(), steps(arm.facts(), type, method)))

@@ -5,7 +5,7 @@ import java.util.List;
 public sealed interface Step {
     int line();
 
-    record Call(int line, String target, String text) implements Step {
+    record Call(int line, String target, String text, boolean external) implements Step {
         public boolean resolved() {
             return target != null;
         }

@@ -13,7 +13,7 @@ class LinkingTest {
                     method <clinit>() 9-15
                       9 call core.handlers.Echo
                       9 call ? value.first()
-                      9 call ? java.util.List.of()
+                      9 call external java.util.List.of()
                       14 call util.Strings#trim(String)
                     method <init>() 17-19
                       18 call core.Context#create(String[])
@@ -34,7 +34,7 @@ class LinkingTest {
                       31 call core.Context.Entry
                       31 call core.Context.Registry#register(Entry)
                       32 call core.Context.Registry#register(Handler)
-                      32 call ? handlers.forEach()
+                      32 call external handlers.forEach()
                       33 call util.Strings#trim(String)
                       33 call core.Base#log(String)
                       34 call core.Context#create(String[])
@@ -50,12 +50,12 @@ class LinkingTest {
                       14 call core.Context
                       14 return
                     method first() 9-11
-                      10 call ? handlers.get()
+                      10 call external handlers.get()
                       10 return
                     type Entry 17-21
                       method handler() 17-17
                       method name() 18-20
-                        19 call ? name.trim()
+                        19 call external name.trim()
                         19 return
                     type Registry 23-31
                       method register(Entry) 27-30
@@ -80,7 +80,7 @@ class LinkingTest {
                 package util
                   type Strings util/Strings.java:3-7
                     method trim(String) 4-6
-                      5 call ? text.trim()
+                      5 call external text.trim()
                       5 return
                 call app.Walker#<clinit>() -> core.handlers.Echo
                 call app.Walker#<clinit>() -> util.Strings#trim(String)

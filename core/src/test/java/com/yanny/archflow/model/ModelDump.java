@@ -47,7 +47,7 @@ public final class ModelDump {
         for (Step step : steps) {
             String prefix = indent + step.line() + " ";
             switch (step) {
-                case Step.Call call -> lines.add(prefix + "call " + (call.resolved() ? call.target() : "? " + call.text()));
+                case Step.Call call -> lines.add(prefix + "call " + target(call));
                 case Step.Branch branch -> {
                     lines.add(prefix + (branch.subject() == null ? "if" : "switch " + branch.subject()));
                     for (Step.Arm arm : branch.arms()) {
@@ -63,6 +63,13 @@ public final class ModelDump {
                 case Step.Throw thrown -> lines.add(prefix + "throw " + thrown.text());
             }
         }
+    }
+
+    private static String target(Step.Call call) {
+        if (call.resolved()) {
+            return call.target();
+        }
+        return (call.external() ? "external " : "? ") + call.text();
     }
 
     private static String armLabel(Step.Branch branch, Step.Arm arm) {
