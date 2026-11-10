@@ -144,5 +144,5 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   implementation, because the parameter type is known only after linking. Needed when a project registers handlers
   through such a method.
 - Source roots are path prefixes given to the CLI, so the analysed project needs no config. An old commit whose
-  layout differs needs other prefixes; whether a log across such a move needs more shows in step 5.
+  layout differs needs other prefixes. The pilot never moved; a log across such a move is not supported yet.
 - A method whose name changes shows as removed and added. Only a changed parameter list is paired (step 3e).
