@@ -1,0 +1,3 @@
+rootProject.name = 'archflow'
+
+include 'core', 'cli', 'viewer', 'plugin'

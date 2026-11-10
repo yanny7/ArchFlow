@@ -1,0 +1,29 @@
+plugins {
+    alias(libs.plugins.intellijPlatform)
+}
+
+repositories {
+    intellijPlatform {
+        defaultRepositories()
+    }
+}
+
+dependencies {
+    implementation project(':core')
+    implementation project(':viewer')
+
+    intellijPlatform {
+        intellijIdea '2026.3'
+    }
+}
+
+intellijPlatform {
+    projectName = 'archflow'
+    instrumentCode = false
+
+    pluginConfiguration {
+        ideaVersion {
+            sinceBuild = '263'
+        }
+    }
+}

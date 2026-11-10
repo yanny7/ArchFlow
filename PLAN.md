@@ -86,13 +86,13 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
 - **IDE target:** IntelliJ IDEA 2026.3 (build 263), the current release. The plugin's `since-build` is `263`.
 - **Java 25** for every module. It is the LTS release and the runtime that IntelliJ 2026.3 runs on (JBR 25).
 - **Build:** a Gradle 9 wrapper, multi-module, with the IntelliJ Platform Gradle Plugin 2.x for `plugin`.
-- **Libraries:** JavaParser (extraction), JGit (git), Cytoscape.js with the ELK layout (viewer). Each is pinned to
-  its latest release when the build is set up.
+- **Libraries:** JavaParser (extraction), JGit (git), JUnit (tests), pinned in `gradle/libs.versions.toml`.
+  Cytoscape.js with the ELK layout (viewer), bundled in `viewer` so the plugin works offline.
 
 ## Steps
 
 - [ ] 1. Model and extraction.
-  - [ ] 1a. Build: Gradle wrapper, the four modules, the toolchain above, an empty test in `core`.
+  - [x] 1a. Build: Gradle wrapper, the four modules, the toolchain above.
   - [ ] 1b. Model: nodes, edges and flow, with a stable text dump and JSON.
   - [ ] 1c. Extraction of structure: packages, types and methods with their location and number of lines.
   - [ ] 1d. Extraction of flow: calls, branches, loops, returns and throws, with condition text.

@@ -1,0 +1,15 @@
+[versions]
+intellijPlatform = "2.20.1"
+javaparser = "3.28.2"
+jgit = "7.8.1.202611041320-r"
+junit = "6.1.3"
+
+[libraries]
+javaparser = { module = "com.github.javaparser:javaparser-core", version.ref = "javaparser" }
+jgit = { module = "org.eclipse.jgit:org.eclipse.jgit", version.ref = "jgit" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+
+[plugins]
+intellijPlatform = { id = "org.jetbrains.intellij.platform", version.ref = "intellijPlatform" }

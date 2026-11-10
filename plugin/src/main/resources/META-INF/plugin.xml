@@ -1,0 +1,7 @@
+<idea-plugin>
+    <id>com.yanny.archflow</id>
+    <name>Archflow</name>
+    <vendor>Yanny</vendor>
+    <description>Shows the architecture of a Java codebase as one graph with levels, and how it changed between commits.</description>
+    <depends>com.intellij.modules.platform</depends>
+</idea-plugin>
