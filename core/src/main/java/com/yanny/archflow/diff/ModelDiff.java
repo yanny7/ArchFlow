@@ -7,6 +7,7 @@ import com.yanny.archflow.model.Step;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,12 +27,18 @@ public final class ModelDiff {
         this.after = byId(after);
     }
 
-    public static Diff diff(Model before, Model after) {
+    public static Diff diff(Model original, Model after) {
+        Map<String, String> renamed = MethodPairing.pairs(original, after);
+        Map<String, String> previous = new HashMap<>();
+        renamed.forEach((oldId, newId) -> previous.put(newId, oldId));
+        Model before = MethodPairing.rename(original, renamed);
         ModelDiff diff = new ModelDiff(before, after);
         diff.after.values().forEach(node -> {
             Node old = diff.before.get(node.id());
             if (old == null) {
                 diff.changes.put(node.id(), new NodeChange(node, Change.ADDED));
+            } else if (previous.containsKey(node.id())) {
+                diff.changes.put(node.id(), new NodeChange(node, Change.CHANGED, previous.get(node.id())));
             } else if (!normalize(before.flow(node.id())).equals(normalize(after.flow(node.id())))) {
                 diff.changes.put(node.id(), new NodeChange(node, Change.CHANGED));
             }

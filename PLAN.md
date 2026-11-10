@@ -87,7 +87,9 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   - A call to a hidden method is carried on to the visible methods it reaches, through further hidden methods and
     from a hidden method to the methods that override it.
 - **Node identity.** A node is identified by its qualified name, and a method also by its signature. The diff matches
-  nodes by identity, so a renamed or moved node shows as removed and added.
+  nodes by identity, so a renamed or moved node shows as removed and added. The one exception is a type that loses
+  one method and gains one of the same name: the two are one method whose parameters changed.
+- **The list of changes** leaves out the edges of an added or removed node; the diff itself keeps them for the viewer.
 - **Edges at any level.** The viewer draws an edge between the nearest visible ancestors of its two ends. This mapping
   is the only graph logic in JS. Everything else is computed in `core` and tested there.
 - **Git** goes through JGit in `core`, for the CLI and the plugin alike.
@@ -115,6 +117,7 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   - [x] 3b. Sources of a commit from git objects and of the working copy, facts cached by file, models by commit.
   - [x] 3c. Diff of two models: nodes added, removed, changed or changed inside, edges added or removed.
   - [x] 3d. Architecture log of a range of commits, and the CLI with its timings.
+  - [x] 3e. A removed and an added method of the same type and name are one changed method, with its edges kept.
 - [ ] 4. Viewer: nested graph with expand and collapse, view switcher, diff overlay with the list of changes.
 - [ ] 5. Pilot run on the ALI graph analysis (Acceptance: pilot model, pilot history).
 - [ ] 6. Plugin: tool window with the viewer, navigation to source, commit picker, working copy kept current.
@@ -138,6 +141,4 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   `minLines`, so the outline reaches `Reads`, `Calls` and `Instructions` only as type dependencies. Shows in step 5.
 - Source roots are path prefixes given to the CLI, so the analysed project needs no config. An old commit whose
   layout differs needs other prefixes; whether a log across such a move needs more shows in step 5.
-- Renamed methods show as removed and added. On the pilot range a changed parameter list shows the same way, with
-  every edge of the method removed and added again (`Walker#walk` and `Reads#execute` in `4d9a713b0`). Whether to
-  match a removed and an added method of the same type and name as one changed method is decided in step 5.
+- A method whose name changes shows as removed and added. Only a changed parameter list is paired (step 3e).

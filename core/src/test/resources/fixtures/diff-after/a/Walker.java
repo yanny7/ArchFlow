@@ -9,8 +9,8 @@ class Walker {
         }
     }
 
-    void step(int depth) {
+    void step(long depth) {
 
-        b.Util.log(depth);
+        b.Util.log((int) depth);
     }
 }
