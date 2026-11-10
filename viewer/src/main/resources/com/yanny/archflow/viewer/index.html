@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Archflow</title>
+<style>
+<!--STYLE-->
+</style>
+</head>
+<body>
+<aside id="sidebar">
+  <h1 id="title">Archflow</h1>
+  <label class="row">View
+    <select id="view"></select>
+  </label>
+  <fieldset id="kinds" class="row"><legend>Edges</legend></fieldset>
+  <div class="row buttons">
+    <button id="expand-changes" type="button">Open changes</button>
+    <button id="collapse" type="button">Collapse all</button>
+    <button id="fit" type="button">Fit</button>
+  </div>
+  <section id="details" hidden>
+    <h2 id="details-name"></h2>
+    <div id="details-meta"></div>
+    <ol id="details-flow"></ol>
+  </section>
+  <section id="changes-section">
+    <h2>Changes <span id="changes-count"></span></h2>
+    <ol id="changes"></ol>
+  </section>
+</aside>
+<main id="graph"></main>
+<!--LIBS-->
+<!--DATA-->
+<!--SCRIPT-->
+</body>
+</html>

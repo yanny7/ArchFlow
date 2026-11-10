@@ -44,38 +44,9 @@ public final class ModelDump {
     }
 
     private void steps(List<Step> steps, String indent) {
-        for (Step step : steps) {
-            String prefix = indent + step.line() + " ";
-            switch (step) {
-                case Step.Call call -> lines.add(prefix + "call " + target(call));
-                case Step.Branch branch -> {
-                    lines.add(prefix + (branch.subject() == null ? "if" : "switch " + branch.subject()));
-                    for (Step.Arm arm : branch.arms()) {
-                        lines.add(indent + "  " + armLabel(branch, arm));
-                        steps(arm.steps(), indent + "    ");
-                    }
-                }
-                case Step.Loop loop -> {
-                    lines.add(prefix + "loop " + loop.header());
-                    steps(loop.steps(), indent + "  ");
-                }
-                case Step.Return ignored -> lines.add(prefix + "return");
-                case Step.Throw thrown -> lines.add(prefix + "throw " + thrown.text());
-            }
+        for (FlowText.Line line : FlowText.lines(steps)) {
+            String number = line.line() == FlowText.Line.NONE ? "" : line.line() + " ";
+            lines.add(indent + "  ".repeat(line.depth()) + number + line.text());
         }
-    }
-
-    private static String target(Step.Call call) {
-        if (call.resolved()) {
-            return call.target();
-        }
-        return (call.external() ? "external " : "? ") + call.text();
-    }
-
-    private static String armLabel(Step.Branch branch, Step.Arm arm) {
-        if (arm.condition() == null) {
-            return branch.subject() == null ? "else" : "default";
-        }
-        return branch.subject() == null ? arm.condition() : "case " + arm.condition();
     }
 }

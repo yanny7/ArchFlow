@@ -9,12 +9,13 @@ import java.util.List;
 import java.util.Locale;
 
 record Options(String command, List<String> revisions, Path repo, List<String> paths, View view, ViewOptions viewOptions,
-               boolean json, Path cache) {
+               boolean json, Path cache, Path out) {
     static final String USAGE = """
             usage: archflow <command> [options]
               model [REV]          the view of a commit, or of the working copy without REV
               diff FROM [TO]       changes of the view from FROM to TO, or to the working copy without TO
               log FROM..TO         the commits of a range that change the view, with their changes
+              html [REV | FROM TO] a page with every view of REV, or of the working copy, or of the diff FROM TO
             options:
               --repo DIR           the git repository (default: the current directory)
               --path PREFIX        a path prefix of the sources to read, repeatable (default: every .java file)
@@ -23,7 +24,8 @@ record Options(String command, List<String> revisions, Path repo, List<String> p
               --external           show calls into code outside the sources
               --json               write the model as JSON (model only)
               --cache DIR          the cache of models (default: ~/.cache/archflow)
-              --no-cache           build every model anew""";
+              --no-cache           build every model anew
+              --out FILE           the page html writes (default: archflow.html)""";
 
     static Options parse(String[] args) {
         if (args.length == 0) {
@@ -36,6 +38,7 @@ record Options(String command, List<String> revisions, Path repo, List<String> p
         ViewOptions viewOptions = ViewOptions.DEFAULT;
         boolean json = false;
         Path cache = defaultCache();
+        Path out = Path.of("archflow.html");
         for (int i = 1; i < args.length; i++) {
             String arg = args[i];
             switch (arg) {
@@ -47,6 +50,7 @@ record Options(String command, List<String> revisions, Path repo, List<String> p
                 case "--json" -> json = true;
                 case "--cache" -> cache = Path.of(value(args, ++i, arg));
                 case "--no-cache" -> cache = null;
+                case "--out" -> out = Path.of(value(args, ++i, arg));
                 default -> {
                     if (arg.startsWith("--")) {
                         throw new IllegalArgumentException("unknown option " + arg);
@@ -55,7 +59,7 @@ record Options(String command, List<String> revisions, Path repo, List<String> p
                 }
             }
         }
-        return new Options(args[0], revisions, repo, paths, view, viewOptions, json, cache);
+        return new Options(args[0], revisions, repo, paths, view, viewOptions, json, cache, out);
     }
 
     private static String value(String[] args, int index, String option) {

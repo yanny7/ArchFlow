@@ -6,15 +6,26 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class DiffText {
+    public record Entry(String target, Change change, String text) {
+        public String line() {
+            return mark(change) + " " + text;
+        }
+    }
+
     private DiffText() {
     }
 
     public static List<String> lines(Diff diff, boolean inside) {
-        List<String> lines = new ArrayList<>();
+        return entries(diff, inside).stream().map(Entry::line).toList();
+    }
+
+    public static List<Entry> entries(Diff diff, boolean inside) {
+        List<Entry> entries = new ArrayList<>();
         for (NodeChange change : diff.nodes()) {
             if (inside || change.change() != Change.INSIDE) {
                 String previous = change.previousId() == null ? "" : " (was " + change.previousId() + ")";
-                lines.add(mark(change.change()) + " " + change.node().kind().name().toLowerCase() + " " + change.node().id() + previous);
+                String text = change.node().kind().name().toLowerCase() + " " + change.node().id() + previous;
+                entries.add(new Entry(change.node().id(), change.change(), text));
             }
         }
         Set<String> appeared = diff.nodes().stream()
@@ -22,13 +33,12 @@ public final class DiffText {
                 .map(change -> change.node().id())
                 .collect(Collectors.toSet());
         for (EdgeChange change : diff.edges()) {
-            if (appeared.contains(change.edge().from())) {
-                continue;
+            if (!appeared.contains(change.edge().from())) {
+                String text = change.edge().kind().name().toLowerCase() + " " + change.edge().from() + " -> " + change.edge().to();
+                entries.add(new Entry(change.edge().from(), change.change(), text));
             }
-            lines.add(mark(change.change()) + " " + change.edge().kind().name().toLowerCase() + " "
-                    + change.edge().from() + " -> " + change.edge().to());
         }
-        return lines;
+        return entries;
     }
 
     private static String mark(Change change) {

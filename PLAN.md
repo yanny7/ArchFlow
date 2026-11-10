@@ -71,7 +71,8 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   - The extractor (JavaParser) turns one file into syntax facts.
   - The linker turns the facts of a source set into a model.
   - Projections and the diff work on models only.
-  - The viewer receives JSON and knows no Java.
+  - The viewer receives JSON and knows no Java. `core` prepares it (`ViewerData`): every view, and for a diff the
+    nodes and edges of both models marked with their change, the list of changes and the flow of each method.
 - **Model.**
   - Nodes: package, type and method, each with its parent and its source location. A method also has its number of
     lines. The initializers of fields and the initializer blocks of a type are its methods `<clinit>` (static) and
@@ -99,8 +100,9 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
 - **IDE target:** IntelliJ IDEA 2026.3 (build 263), the current release. The plugin's `since-build` is `263`.
 - **Java 25** for every module. It is the LTS release and the runtime that IntelliJ 2026.3 runs on (JBR 25).
 - **Build:** a Gradle 9 wrapper, multi-module, with the IntelliJ Platform Gradle Plugin 2.x for `plugin`.
-- **Libraries:** JavaParser (extraction), JGit (git), JUnit (tests), pinned in `gradle/libs.versions.toml`.
-  Cytoscape.js with the ELK layout (viewer), bundled in `viewer` so the plugin works offline.
+- **Libraries:** JavaParser (extraction), JGit (git), Gson (JSON), JUnit (tests), pinned in
+  `gradle/libs.versions.toml`. Cytoscape.js with the ELK layout (viewer), bundled in `viewer` so the plugin works
+  offline; their versions and licenses are listed next to them in `THIRD_PARTY.md`.
 
 ## Steps
 
@@ -118,7 +120,8 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   - [x] 3c. Diff of two models: nodes added, removed, changed or changed inside, edges added or removed.
   - [x] 3d. Architecture log of a range of commits, and the CLI with its timings.
   - [x] 3e. A removed and an added method of the same type and name are one changed method, with its edges kept.
-- [ ] 4. Viewer: nested graph with expand and collapse, view switcher, diff overlay with the list of changes.
+- [x] 4. Viewer: nested graph with expand and collapse, view switcher, diff overlay with the list of changes, and the
+  CLI writing it as one self-contained page of a commit or of a diff.
 - [ ] 5. Pilot run on the ALI graph analysis (Acceptance: pilot model, pilot history).
 - [ ] 6. Plugin: tool window with the viewer, navigation to source, commit picker, working copy kept current.
 
@@ -128,7 +131,6 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   declares its own source-retention annotation and gains no dependency. One name on several types could form one
   logical node (instruction meaning = `Instructions` + `Arithmetic` + `Branches`).
 - Rules checked against the model, such as the layers of `GRAPH.md` run as a test.
-- A static HTML export of one diff, to attach to a review.
 - Kotlin sources.
 
 ## Open questions
