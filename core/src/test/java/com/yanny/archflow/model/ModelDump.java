@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-final class ModelDump {
+public final class ModelDump {
     private final Model model;
     private final List<String> lines = new ArrayList<>();
 
@@ -12,7 +12,7 @@ final class ModelDump {
         this.model = model;
     }
 
-    static List<String> dump(Model model) {
+    public static List<String> dump(Model model) {
         ModelDump dump = new ModelDump(model);
         dump.children(null, "");
         model.edges().forEach(e -> dump.lines.add(e.kind().name().toLowerCase() + " " + e.from() + " -> " + e.to()));

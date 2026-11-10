@@ -3,6 +3,8 @@ plugins {
 }
 
 dependencies {
+    implementation libs.javaparser
+
     testImplementation platform(libs.junit.bom)
     testImplementation libs.junit.jupiter
     testRuntimeOnly libs.junit.launcher
