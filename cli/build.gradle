@@ -1,3 +1,13 @@
+plugins {
+    id 'application'
+}
+
 dependencies {
     implementation project(':core')
+    runtimeOnly libs.slf4j.nop
+}
+
+application {
+    applicationName = 'archflow'
+    mainClass = 'com.yanny.archflow.cli.Main'
 }

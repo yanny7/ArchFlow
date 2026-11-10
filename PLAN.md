@@ -110,11 +110,11 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   - [x] 1e. Linking: resolution as far as declared types, unresolved calls, dependencies.
   - [x] 1f. Calls through an interface or an overridden method: override edges, initializers as methods.
 - [x] 2. Views: all functions, outline (methods by size), dependencies.
-- [ ] 3. Diff and history.
+- [x] 3. Diff and history.
   - [x] 3a. The model as JSON for the cache and the viewer.
   - [x] 3b. Sources of a commit from git objects and of the working copy, facts cached by file, models by commit.
   - [x] 3c. Diff of two models: nodes added, removed, changed or changed inside, edges added or removed.
-  - [ ] 3d. Architecture log of a range of commits, and the CLI with its timings.
+  - [x] 3d. Architecture log of a range of commits, and the CLI with its timings.
 - [ ] 4. Viewer: nested graph with expand and collapse, view switcher, diff overlay with the list of changes.
 - [ ] 5. Pilot run on the ALI graph analysis (Acceptance: pilot model, pilot history).
 - [ ] 6. Plugin: tool window with the viewer, navigation to source, commit picker, working copy kept current.
@@ -136,6 +136,8 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
 - Whether size alone gives a useful outline. On the pilot, the outline of `Walker#execute` stops at `Handler#execute`
   (one line, implemented only by lambdas and method references) and the static initializer that names them is below
   `minLines`, so the outline reaches `Reads`, `Calls` and `Instructions` only as type dependencies. Shows in step 5.
-- Source roots of an old commit whose layout differs from the current config. The config is read from that commit;
-  whether that is enough shows in step 3.
-- Renamed methods show as removed and added. Whether a heuristic match is worth it shows in step 5.
+- Source roots are path prefixes given to the CLI, so the analysed project needs no config. An old commit whose
+  layout differs needs other prefixes; whether a log across such a move needs more shows in step 5.
+- Renamed methods show as removed and added. On the pilot range a changed parameter list shows the same way, with
+  every edge of the method removed and added again (`Walker#walk` and `Reads#execute` in `4d9a713b0`). Whether to
+  match a removed and an added method of the same type and name as one changed method is decided in step 5.
