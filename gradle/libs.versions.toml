@@ -1,10 +1,12 @@
 [versions]
+gson = "2.15.0"
 intellijPlatform = "2.20.1"
 javaparser = "3.28.2"
 jgit = "7.8.1.202611041320-r"
 junit = "6.1.3"
 
 [libraries]
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 javaparser = { module = "com.github.javaparser:javaparser-core", version.ref = "javaparser" }
 jgit = { module = "org.eclipse.jgit:org.eclipse.jgit", version.ref = "jgit" }
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }

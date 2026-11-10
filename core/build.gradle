@@ -3,6 +3,7 @@ plugins {
 }
 
 dependencies {
+    implementation libs.gson
     implementation libs.javaparser
 
     testImplementation platform(libs.junit.bom)
