@@ -25,6 +25,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class GitRepo implements AutoCloseable {
+    public record CommitInfo(String id, String message) {
+    }
+
     private final Repository repository;
 
     public GitRepo(Path dir) throws IOException {
@@ -49,6 +52,35 @@ public final class GitRepo implements AutoCloseable {
     public String message(String commit) throws IOException {
         try (RevWalk walk = new RevWalk(repository)) {
             return walk.parseCommit(ObjectId.fromString(commit)).getShortMessage();
+        }
+    }
+
+    public Path workTree() {
+        return repository.getWorkTree().toPath();
+    }
+
+    public List<CommitInfo> history(String start, int limit) throws IOException {
+        List<CommitInfo> commits = new ArrayList<>();
+        try (RevWalk walk = new RevWalk(repository)) {
+            walk.setFirstParent(true);
+            walk.markStart(walk.parseCommit(ObjectId.fromString(resolve(start))));
+            for (RevCommit commit : walk) {
+                if (commits.size() == limit) {
+                    break;
+                }
+                commits.add(new CommitInfo(commit.name(), commit.getShortMessage()));
+            }
+        }
+        return commits;
+    }
+
+    public String fileAt(String commit, String path) throws IOException {
+        try (RevWalk walk = new RevWalk(repository);
+             TreeWalk tree = TreeWalk.forPath(repository, path, walk.parseCommit(ObjectId.fromString(commit)).getTree())) {
+            if (tree == null) {
+                throw new IOException(path + " is not in " + commit);
+            }
+            return read(tree.getObjectId(0));
         }
     }
 

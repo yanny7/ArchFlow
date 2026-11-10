@@ -4,4 +4,10 @@
     <vendor>Yanny</vendor>
     <description>Shows the architecture of a Java codebase as one graph with levels, and how it changed between commits.</description>
     <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.jcef</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="Archflow" anchor="bottom" icon="AllIcons.Toolwindows.ToolWindowHierarchy"
+                    factoryClass="com.yanny.archflow.plugin.ArchflowToolWindowFactory"/>
+    </extensions>
 </idea-plugin>

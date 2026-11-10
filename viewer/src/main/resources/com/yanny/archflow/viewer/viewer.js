@@ -22,7 +22,19 @@
     });
     document.getElementById('fit').addEventListener('click', () => cy.fit(undefined, 20));
 
+    window.archflowTheme = function (theme) {
+        document.documentElement.dataset.theme = theme;
+        cy.style(styles());
+    };
+
+    window.archflowMessage = function (text) {
+        const message = document.getElementById('message');
+        message.textContent = text || '';
+        message.hidden = !text;
+    };
+
     window.archflowLoad = function (data) {
+        window.archflowMessage(null);
         state.data = data;
         document.getElementById('title').textContent = data.title;
         document.title = 'Archflow: ' + data.title;
@@ -331,7 +343,8 @@
         const text = color('--text');
         const muted = color('--muted');
         const border = color('--border');
-        const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const theme = document.documentElement.dataset.theme;
+        const dark = theme ? theme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
         return [
             {selector: 'node', style: {
                 'label': 'data(label)', 'font-size': 11, 'color': text, 'text-valign': 'center', 'text-halign': 'center',

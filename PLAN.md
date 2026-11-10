@@ -99,12 +99,19 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
 - **Edges at any level.** The viewer draws an edge between the nearest visible ancestors of its two ends. This mapping
   is the only graph logic in JS. Everything else is computed in `core` and tested there.
 - **Git** goes through JGit in `core`, for the CLI and the plugin alike.
+- **Plugin.** A tool window shows the viewer page in JCEF (the bundled plugin `com.intellij.modules.jcef`) and sends
+  it the data of the chosen commits through `archflowLoad`. The page calls back through `archflowOpen(file, line,
+  commit)`: without a commit the file of the working copy opens, with one a read-only copy of that commit's version.
+  Source paths and `minLines` are project settings (`.idea/archflow.xml`); models are cached in the IDE's system
+  directory. The platform's own `slf4j` is used, so the plugin does not bundle one.
 
 ## Toolchain
 
 - **IDE target:** IntelliJ IDEA 2026.3 (build 263), the current release. The plugin's `since-build` is `263`.
 - **Java 25** for every module. It is the LTS release and the runtime that IntelliJ 2026.3 runs on (JBR 25).
 - **Build:** a Gradle 9 wrapper, multi-module, with the IntelliJ Platform Gradle Plugin 2.x for `plugin`.
+  `./gradlew :plugin:verifyPlugin` runs the Plugin Verifier against 2026.3; it is not part of `build` (its first run
+  downloads about 1.3 GB).
 - **Libraries:** JavaParser (extraction), JGit (git), Gson (JSON), JUnit (tests), pinned in
   `gradle/libs.versions.toml`. Cytoscape.js with the ELK layout (viewer), bundled in `viewer` so the plugin works
   offline; their versions and licenses are listed next to them in `THIRD_PARTY.md`.
@@ -128,7 +135,8 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
 - [x] 4. Viewer: nested graph with expand and collapse, view switcher, diff overlay with the list of changes, and the
   CLI writing it as one self-contained page of a commit or of a diff.
 - [x] 5. Pilot run on the ALI graph analysis (Acceptance: pilot model, pilot history).
-- [ ] 6. Plugin: tool window with the viewer, navigation to source, commit picker, working copy kept current.
+- [ ] 6. Plugin: tool window with the viewer, navigation to source, commit picker, working copy kept current. Built
+  and passing the Plugin Verifier; the acceptance (a click opens the source) is checked by hand in the IDE.
 
 ### Later
 - `@Arch` annotations that name a node, set its level and give it an identity that survives renames and moves. Edges
