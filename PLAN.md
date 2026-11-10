@@ -14,8 +14,8 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   branch, loop and dependency. The outline, all functions, flow, dependencies and containment are projections of that
   one model. A new view is a new projection, never a change to the extractor.
 - **Big methods are the outline.** The outline view keeps packages, types and every method of at least `minLines`
-  lines, each under its own name. A smaller method disappears and its calls are carried on to the outline nodes they
-  reach. The all-functions view is the detailed one.
+  lines (10 by default, set in the view options), each under its own name. A smaller method disappears and its calls
+  are carried on to the outline nodes they reach. The all-functions view is the detailed one.
 - **The analysed code needs no change.** Nothing is added to the analysed project: no annotation, no dependency, no
   build step.
 - **Edges come only from the code.** Calls, dependencies and branches are read from the source, never declared.
@@ -29,6 +29,8 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   shows the difference between two extractors, not between two commits.
 - **Unknown is a value, not a failure.** A call whose target cannot be resolved stays in the model as an unresolved
   call and the view marks it. Extraction of the rest goes on.
+- **Outside calls are hidden, not lost.** A call into code outside the source set (the JDK, a library) is kept in the
+  model as external. Views hide external calls unless their options say to show them.
 - **Same input, same bytes.** A model is serialised in a stable order, so two runs on the same commit give identical
   output and a model can be cached by commit forever.
 - **Extension points are designed, not grown.** A step whose code later steps extend (a projection, a kind of diff, a
@@ -78,6 +80,12 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
     interface or a superclass targets the declared method; views carry it on to the overriding methods.
   - The flow of each method: its body reduced to calls, branches, loops, returns and throws, with the source text of
     every condition.
+- **Views.** A view is a projection from a model to a model (`View`), so the dump, the viewer and the diff work on
+  any view alike.
+  - Its options are `minLines` and whether external calls show.
+  - A view keeps a branch or loop only when it holds a call the view shows. Returns and throws stay in the model only.
+  - A call to a hidden method is carried on to the visible methods it reaches, through further hidden methods and
+    from a hidden method to the methods that override it.
 - **Node identity.** A node is identified by its qualified name, and a method also by its signature. The diff matches
   nodes by identity, so a renamed or moved node shows as removed and added.
 - **Edges at any level.** The viewer draws an edge between the nearest visible ancestors of its two ends. This mapping
@@ -101,7 +109,7 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   - [x] 1d. Extraction of flow: calls, branches, loops, returns and throws, with condition text.
   - [x] 1e. Linking: resolution as far as declared types, unresolved calls, dependencies.
   - [x] 1f. Calls through an interface or an overridden method: override edges, initializers as methods.
-- [ ] 2. Views: all functions, outline (methods by size), dependencies.
+- [x] 2. Views: all functions, outline (methods by size), dependencies.
 - [ ] 3. Diff: models of commits from git, the model as JSON for the cache and the viewer, diff of two models,
   architecture log, CLI.
 - [ ] 4. Viewer: nested graph with expand and collapse, view switcher, diff overlay with the list of changes.
@@ -122,8 +130,9 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
 - A lambda or method reference that implements an interface (the pilot's `Walker.HANDLERS` are `Reads::execute`,
   `Calls::execute` and a lambda) has no override edge, because its interface is known only from the context it is
   passed to. `Walker` reaches them through its static initializer. Whether a view needs more shows in step 5.
-- The default of `minLines`, and whether size alone gives a useful outline. An interface method has no body, so the
-  outline shows `Handler` only as a type. Shows in step 5.
+- Whether size alone gives a useful outline. On the pilot, the outline of `Walker#execute` stops at `Handler#execute`
+  (one line, implemented only by lambdas and method references) and the static initializer that names them is below
+  `minLines`, so the outline reaches `Reads`, `Calls` and `Instructions` only as type dependencies. Shows in step 5.
 - Source roots of an old commit whose layout differs from the current config. The config is read from that commit;
   whether that is enough shows in step 3.
 - Renamed methods show as removed and added. Whether a heuristic match is worth it shows in step 5.

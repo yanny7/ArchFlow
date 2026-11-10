@@ -13,19 +13,19 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
 
-final class Fixtures {
+public final class Fixtures {
     private Fixtures() {
     }
 
-    static String dump(String fixture) {
+    public static String dump(String fixture) {
         return String.join("\n", ModelDump.dump(model(fixture)));
     }
 
-    static Model model(String fixture) {
+    public static Model model(String fixture) {
         return Linker.link(facts(fixture));
     }
 
-    static List<FileFacts> facts(String fixture) {
+    public static List<FileFacts> facts(String fixture) {
         Path root = root(fixture);
         JavaExtractor extractor = new JavaExtractor();
         try (Stream<Path> paths = Files.walk(root)) {
