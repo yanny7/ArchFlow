@@ -79,6 +79,11 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
     `<instance-init>`, and the accessors of a record's components are its methods even when not written.
   - Edges: call, dependency, and override from a method to each method it overrides or implements. A call through an
     interface or a superclass targets the declared method; views carry it on to the overriding methods.
+  - A lambda or method reference implements the one abstract method of a source interface when its target type shows
+    in the syntax: a field or local initialized with it, directly or as an argument of the initializer's call
+    (`List<Handler> HANDLERS = List.of(Reads::execute, ...)`), or a `return` of a method returning that type. A
+    method reference then overrides the interface method; a lambda becomes a method inside its enclosing method
+    (`Walker#<clinit>()$lambda1`) with its own flow. A lambda whose target is outside the source set stays inline.
   - The flow of each method: its body reduced to calls, branches, loops, returns and throws, with the source text of
     every condition.
 - **Views.** A view is a projection from a model to a model (`View`), so the dump, the viewer and the diff work on
@@ -122,7 +127,7 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   - [x] 3e. A removed and an added method of the same type and name are one changed method, with its edges kept.
 - [x] 4. Viewer: nested graph with expand and collapse, view switcher, diff overlay with the list of changes, and the
   CLI writing it as one self-contained page of a commit or of a diff.
-- [ ] 5. Pilot run on the ALI graph analysis (Acceptance: pilot model, pilot history).
+- [x] 5. Pilot run on the ALI graph analysis (Acceptance: pilot model, pilot history).
 - [ ] 6. Plugin: tool window with the viewer, navigation to source, commit picker, working copy kept current.
 
 ### Later
@@ -135,12 +140,9 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
 
 ## Open questions
 
-- A lambda or method reference that implements an interface (the pilot's `Walker.HANDLERS` are `Reads::execute`,
-  `Calls::execute` and a lambda) has no override edge, because its interface is known only from the context it is
-  passed to. `Walker` reaches them through its static initializer. Whether a view needs more shows in step 5.
-- Whether size alone gives a useful outline. On the pilot, the outline of `Walker#execute` stops at `Handler#execute`
-  (one line, implemented only by lambdas and method references) and the static initializer that names them is below
-  `minLines`, so the outline reaches `Reads`, `Calls` and `Instructions` only as type dependencies. Shows in step 5.
+- A lambda passed as an argument to a source method whose parameter is a source interface is not recognized as an
+  implementation, because the parameter type is known only after linking. Needed when a project registers handlers
+  through such a method.
 - Source roots are path prefixes given to the CLI, so the analysed project needs no config. An old commit whose
   layout differs needs other prefixes; whether a log across such a move needs more shows in step 5.
 - A method whose name changes shows as removed and added. Only a changed parameter list is paired (step 3e).
