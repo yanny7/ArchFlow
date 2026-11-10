@@ -8,12 +8,14 @@ import com.yanny.archflow.facts.TypeFacts;
 import com.yanny.archflow.facts.TypeRef;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -122,6 +124,28 @@ final class TypeIndex {
                 .filter(m -> m.isConstructor() && accepts(m, args))
                 .map(m -> new MethodHit(type, m))
                 .toList();
+    }
+
+    List<MethodHit> overridden(TypeInfo type, MethodFacts method) {
+        List<MethodHit> overridden = new ArrayList<>();
+        inHierarchy(type, t -> {
+            if (t != type) {
+                List<MethodFacts> sameName = t.facts().methods().stream()
+                        .filter(m -> m.name().equals(method.name()) && m.params().size() == method.params().size())
+                        .toList();
+                sameName.stream()
+                        .filter(m -> erasure(m).equals(erasure(method)))
+                        .findFirst()
+                        .or(() -> sameName.size() == 1 ? Optional.of(sameName.getFirst()) : Optional.empty())
+                        .ifPresent(m -> overridden.add(new MethodHit(t, m)));
+            }
+            return null;
+        });
+        return overridden;
+    }
+
+    private static List<String> erasure(MethodFacts method) {
+        return method.params().stream().map(p -> p.type().erasedSimpleName()).toList();
     }
 
     boolean isSubtype(TypeInfo type, TypeInfo supertype) {

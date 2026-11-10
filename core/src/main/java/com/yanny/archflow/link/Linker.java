@@ -70,9 +70,21 @@ public final class Linker {
             method.params().stream().map(Param::type).forEach(ref -> depend(type, ref));
             depend(type, method.returnType());
             String id = methodId(type.id(), method);
-            String name = method.isConstructor() ? type.facts().name() : method.name();
-            if (add(new Node(id, NodeKind.METHOD, name, type.id(), method.location())) && !method.body().isEmpty()) {
+            String name = switch (method.name()) {
+                case MethodFacts.CONSTRUCTOR -> type.facts().name();
+                case MethodFacts.STATIC_INIT -> "static initializer";
+                case MethodFacts.INSTANCE_INIT -> "initializer";
+                default -> method.name();
+            };
+            if (!add(new Node(id, NodeKind.METHOD, name, type.id(), method.location()))) {
+                continue;
+            }
+            if (!method.body().isEmpty()) {
                 flows.put(id, steps(method.body(), type, id));
+            }
+            if (method.overridable()) {
+                index.overridden(type, method)
+                        .forEach(hit -> edges.add(new Edge(EdgeKind.OVERRIDE, id, methodId(hit.owner().id(), hit.method()))));
             }
         }
     }

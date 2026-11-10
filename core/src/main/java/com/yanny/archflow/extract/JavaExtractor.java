@@ -9,7 +9,9 @@ import com.github.javaparser.ast.PackageDeclaration;
 import com.github.javaparser.ast.body.CallableDeclaration;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.ConstructorDeclaration;
+import com.github.javaparser.ast.body.EnumDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
+import com.github.javaparser.ast.body.InitializerDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.RecordDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
@@ -70,10 +72,22 @@ public final class JavaExtractor {
         }
         List<MethodFacts> methods = new ArrayList<>();
         List<TypeFacts> types = new ArrayList<>();
+        List<Node> staticParts = new ArrayList<>();
+        List<Node> instanceParts = new ArrayList<>();
+        if (type instanceof EnumDeclaration enumeration) {
+            enumeration.getEntries().forEach(entry -> staticParts.addAll(entry.getArguments()));
+        }
+        boolean isInterface = type instanceof ClassOrInterfaceDeclaration declaration && declaration.isInterface();
         for (var member : type.getMembers()) {
             switch (member) {
-                case FieldDeclaration field -> field.getVariables()
-                        .forEach(v -> fields.add(new FieldFacts(v.getNameAsString(), ref(v.getType()))));
+                case FieldDeclaration field -> {
+                    List<Node> parts = field.isStatic() || isInterface ? staticParts : instanceParts;
+                    for (var variable : field.getVariables()) {
+                        fields.add(new FieldFacts(variable.getNameAsString(), ref(variable.getType())));
+                        variable.getInitializer().ifPresent(parts::add);
+                    }
+                }
+                case InitializerDeclaration initializer -> (initializer.isStatic() ? staticParts : instanceParts).add(initializer.getBody());
                 case MethodDeclaration method -> methods.add(method(file, method, method.getNameAsString(),
                         ref(method.getType()), method.getBody().orElse(null)));
                 case ConstructorDeclaration constructor -> methods.add(method(file, constructor, MethodFacts.CONSTRUCTOR,
@@ -83,6 +97,8 @@ public final class JavaExtractor {
                 }
             }
         }
+        initializer(file, methods, MethodFacts.STATIC_INIT, staticParts);
+        initializer(file, methods, MethodFacts.INSTANCE_INIT, instanceParts);
         if (type instanceof RecordDeclaration record) {
             for (var component : record.getParameters()) {
                 String name = component.getNameAsString();
@@ -92,6 +108,14 @@ public final class JavaExtractor {
             }
         }
         return new TypeFacts(type.getNameAsString(), location(file, type), superclass, interfaces, fields, methods, types);
+    }
+
+    private void initializer(String file, List<MethodFacts> methods, String name, List<Node> parts) {
+        List<FlowFact> flow = FlowExtractor.initializers(parts);
+        if (!flow.isEmpty()) {
+            Location location = new Location(file, location(file, parts.getFirst()).line(), location(file, parts.getLast()).endLine());
+            methods.add(new MethodFacts(name, List.of(), null, location, flow));
+        }
     }
 
     private MethodFacts method(String file, CallableDeclaration<?> method, String name, TypeRef returnType, BlockStmt body) {

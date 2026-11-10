@@ -32,6 +32,19 @@ final class FlowExtractor {
         return out;
     }
 
+    static List<FlowFact> initializers(List<Node> parts) {
+        FlowExtractor extractor = new FlowExtractor(List.of());
+        List<FlowFact> out = new ArrayList<>();
+        for (Node part : parts) {
+            switch (part) {
+                case Expression expression -> extractor.expression(expression, out);
+                case Statement statement -> extractor.statement(statement, out);
+                default -> throw new IllegalArgumentException(part.getClass().getName());
+            }
+        }
+        return out;
+    }
+
     private void statement(Statement statement, List<FlowFact> out) {
         int line = line(statement);
         switch (statement) {

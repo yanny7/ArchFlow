@@ -6,7 +6,13 @@ import core.handlers.Echo;
 import static util.Strings.trim;
 
 public class Walker extends Base {
+    private static final java.util.List<Visitor<Context>> VISITORS = java.util.List.of(new Echo(), value -> value.first());
     private final Handler[] extra = {};
+    private final Context own = Context.create();
+
+    static {
+        trim("static");
+    }
 
     public Walker() {
         super(Context.create());

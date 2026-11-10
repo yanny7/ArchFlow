@@ -72,8 +72,10 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   - The viewer receives JSON and knows no Java.
 - **Model.**
   - Nodes: package, type and method, each with its parent and its source location. A method also has its number of
-    lines.
-  - Edges: call and dependency.
+    lines. The initializers of fields and the initializer blocks of a type are its methods `<clinit>` (static) and
+    `<instance-init>`, and the accessors of a record's components are its methods even when not written.
+  - Edges: call, dependency, and override from a method to each method it overrides or implements. A call through an
+    interface or a superclass targets the declared method; views carry it on to the overriding methods.
   - The flow of each method: its body reduced to calls, branches, loops, returns and throws, with the source text of
     every condition.
 - **Node identity.** A node is identified by its qualified name, and a method also by its signature. The diff matches
@@ -92,13 +94,13 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
 
 ## Steps
 
-- [ ] 1. Model and extraction.
+- [x] 1. Model and extraction.
   - [x] 1a. Build: Gradle wrapper, the four modules, the toolchain above.
   - [x] 1b. Model: nodes, edges and flow in a stable order, with a text dump for tests.
   - [x] 1c. Extraction of structure: packages, types and methods with their location and number of lines.
   - [x] 1d. Extraction of flow: calls, branches, loops, returns and throws, with condition text.
   - [x] 1e. Linking: resolution as far as declared types, unresolved calls, dependencies.
-  - [ ] 1f. Calls through an interface or an overridden method (open question below).
+  - [x] 1f. Calls through an interface or an overridden method: override edges, initializers as methods.
 - [ ] 2. Views: all functions, outline (methods by size), dependencies.
 - [ ] 3. Diff: models of commits from git, the model as JSON for the cache and the viewer, diff of two models,
   architecture log, CLI.
@@ -117,8 +119,9 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
 
 ## Open questions
 
-- Calls through an interface (`Walker` calls its handlers through `Handler`): an edge to the interface method only, or
-  also to its implementations in the source set. Decided in step 1f, and the pilot needs the latter.
+- A lambda or method reference that implements an interface (the pilot's `Walker.HANDLERS` are `Reads::execute`,
+  `Calls::execute` and a lambda) has no override edge, because its interface is known only from the context it is
+  passed to. `Walker` reaches them through its static initializer. Whether a view needs more shows in step 5.
 - The default of `minLines`, and whether size alone gives a useful outline. An interface method has no body, so the
   outline shows `Handler` only as a type. Shows in step 5.
 - Source roots of an old commit whose layout differs from the current config. The config is read from that commit;
