@@ -112,7 +112,7 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
 - [x] 2. Views: all functions, outline (methods by size), dependencies.
 - [ ] 3. Diff and history.
   - [x] 3a. The model as JSON for the cache and the viewer.
-  - [ ] 3b. Sources of a commit from git objects and of the working copy, facts cached by file, models by commit.
+  - [x] 3b. Sources of a commit from git objects and of the working copy, facts cached by file, models by commit.
   - [ ] 3c. Diff of two models: nodes added, removed, changed or changed inside, edges added or removed.
   - [ ] 3d. Architecture log of a range of commits, and the CLI with its timings.
 - [ ] 4. Viewer: nested graph with expand and collapse, view switcher, diff overlay with the list of changes.
