@@ -93,13 +93,14 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
 
 - [ ] 1. Model and extraction.
   - [x] 1a. Build: Gradle wrapper, the four modules, the toolchain above.
-  - [ ] 1b. Model: nodes, edges and flow, with a stable text dump and JSON.
+  - [x] 1b. Model: nodes, edges and flow in a stable order, with a text dump for tests.
   - [ ] 1c. Extraction of structure: packages, types and methods with their location and number of lines.
   - [ ] 1d. Extraction of flow: calls, branches, loops, returns and throws, with condition text.
   - [ ] 1e. Linking: resolution as far as declared types, unresolved calls, dependencies.
   - [ ] 1f. Calls through an interface or an overridden method (open question below).
 - [ ] 2. Views: all functions, outline (methods by size), dependencies.
-- [ ] 3. Diff: models of commits from git, diff of two models, architecture log, CLI.
+- [ ] 3. Diff: models of commits from git, the model as JSON for the cache and the viewer, diff of two models,
+  architecture log, CLI.
 - [ ] 4. Viewer: nested graph with expand and collapse, view switcher, diff overlay with the list of changes.
 - [ ] 5. Pilot run on the ALI graph analysis (Acceptance: pilot model, pilot history).
 - [ ] 6. Plugin: tool window with the viewer, navigation to source, commit picker, working copy kept current.
