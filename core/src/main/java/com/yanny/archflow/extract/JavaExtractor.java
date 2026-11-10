@@ -7,6 +7,7 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.PackageDeclaration;
 import com.github.javaparser.ast.body.CallableDeclaration;
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.ConstructorDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
@@ -53,12 +54,15 @@ public final class JavaExtractor {
     }
 
     private TypeFacts type(String file, TypeDeclaration<?> type) {
-        List<TypeRef> supertypes = new ArrayList<>();
-        if (type instanceof NodeWithExtends<?> extending) {
-            extending.getExtendedTypes().forEach(t -> supertypes.add(ref(t)));
+        TypeRef superclass = null;
+        List<TypeRef> interfaces = new ArrayList<>();
+        if (type instanceof ClassOrInterfaceDeclaration declaration && declaration.isInterface()) {
+            declaration.getExtendedTypes().forEach(t -> interfaces.add(ref(t)));
+        } else if (type instanceof NodeWithExtends<?> extending && extending.getExtendedTypes().isNonEmpty()) {
+            superclass = ref(extending.getExtendedTypes(0));
         }
         if (type instanceof NodeWithImplements<?> implementing) {
-            implementing.getImplementedTypes().forEach(t -> supertypes.add(ref(t)));
+            implementing.getImplementedTypes().forEach(t -> interfaces.add(ref(t)));
         }
         List<FieldFacts> fields = new ArrayList<>();
         if (type instanceof RecordDeclaration record) {
@@ -79,12 +83,20 @@ public final class JavaExtractor {
                 }
             }
         }
-        return new TypeFacts(type.getNameAsString(), location(file, type), supertypes, fields, methods, types);
+        if (type instanceof RecordDeclaration record) {
+            for (var component : record.getParameters()) {
+                String name = component.getNameAsString();
+                if (methods.stream().noneMatch(m -> m.name().equals(name) && m.params().isEmpty())) {
+                    methods.add(new MethodFacts(name, List.of(), ref(component.getType()), location(file, component), List.of()));
+                }
+            }
+        }
+        return new TypeFacts(type.getNameAsString(), location(file, type), superclass, interfaces, fields, methods, types);
     }
 
     private MethodFacts method(String file, CallableDeclaration<?> method, String name, TypeRef returnType, BlockStmt body) {
         List<Param> params = method.getParameters().stream()
-                .map(p -> new Param(p.getNameAsString(), ref(p.getType()).withDims(p.isVarArgs() ? 1 : 0)))
+                .map(p -> new Param(p.getNameAsString(), ref(p.getType()).withDims(p.isVarArgs() ? 1 : 0), p.isVarArgs()))
                 .toList();
         List<FlowFact> flow = body == null ? List.of() : FlowExtractor.body(method.getParameters(), body);
         return new MethodFacts(name, params, returnType, location(file, method), flow);

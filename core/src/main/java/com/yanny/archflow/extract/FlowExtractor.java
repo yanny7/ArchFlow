@@ -5,6 +5,7 @@ import com.github.javaparser.ast.body.Parameter;
 import com.github.javaparser.ast.body.VariableDeclarator;
 import com.github.javaparser.ast.expr.*;
 import com.github.javaparser.ast.stmt.*;
+import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.Type;
 import com.yanny.archflow.facts.FlowFact;
 import com.yanny.archflow.facts.MethodFacts;
@@ -94,7 +95,7 @@ final class FlowExtractor {
                 invocation.getArguments().forEach(e -> expression(e, out));
                 Receiver receiver = invocation.isThis() ? new Receiver.This() : new Receiver.Super();
                 String text = invocation.isThis() ? "this()" : "super()";
-                out.add(new FlowFact.Call(line, receiver, MethodFacts.CONSTRUCTOR, invocation.getArguments().size(), text));
+                out.add(new FlowFact.Call(line, receiver, MethodFacts.CONSTRUCTOR, receivers(invocation.getArguments()), text));
             }
             case LabeledStmt labeled -> statement(labeled.getStatement(), out);
             case SynchronizedStmt synchronizedStmt -> {
@@ -165,24 +166,26 @@ final class FlowExtractor {
                 call.getScope().ifPresent(e -> expression(e, out));
                 call.getArguments().forEach(e -> expression(e, out));
                 Receiver receiver = call.getScope().map(this::receiver).orElse(new Receiver.Implicit());
-                out.add(new FlowFact.Call(line, receiver, call.getNameAsString(), call.getArguments().size(), compact(call)));
+                out.add(new FlowFact.Call(line, receiver, call.getNameAsString(), receivers(call.getArguments()), compact(call)));
             }
             case ObjectCreationExpr creation -> {
                 creation.getScope().ifPresent(e -> expression(e, out));
                 creation.getArguments().forEach(e -> expression(e, out));
                 Receiver receiver = new Receiver.Typed(JavaExtractor.ref(creation.getType()));
-                out.add(new FlowFact.Call(line, receiver, MethodFacts.CONSTRUCTOR, creation.getArguments().size(), compact(creation)));
+                out.add(new FlowFact.Call(line, receiver, MethodFacts.CONSTRUCTOR, receivers(creation.getArguments()), compact(creation)));
             }
             case MethodReferenceExpr reference -> {
                 Receiver receiver;
                 if (reference.getScope() instanceof TypeExpr type) {
-                    receiver = new Receiver.Typed(JavaExtractor.ref(type.getType()));
+                    receiver = type.getType() instanceof ClassOrInterfaceType named && named.getTypeArguments().isEmpty()
+                            ? nameChain(named.getNameWithScope())
+                            : new Receiver.Typed(JavaExtractor.ref(type.getType()));
                 } else {
                     expression(reference.getScope(), out);
                     receiver = receiver(reference.getScope());
                 }
                 String name = reference.getIdentifier().equals("new") ? MethodFacts.CONSTRUCTOR : reference.getIdentifier();
-                out.add(new FlowFact.Call(line, receiver, name, FlowFact.Call.ANY_ARGS, compact(reference)));
+                out.add(FlowFact.Call.anyArgs(line, receiver, name, compact(reference)));
             }
             case LambdaExpr lambda -> {
                 lambda.getParameters().forEach(this::declare);
@@ -232,7 +235,7 @@ final class FlowExtractor {
             case SuperExpr ignored -> new Receiver.Super();
             case FieldAccessExpr field -> new Receiver.Field(receiver(field.getScope()), field.getNameAsString());
             case MethodCallExpr call -> new Receiver.Result(call.getScope().map(this::receiver).orElse(new Receiver.Implicit()),
-                    call.getNameAsString(), call.getArguments().size());
+                    call.getNameAsString(), receivers(call.getArguments()));
             case ObjectCreationExpr creation -> new Receiver.Typed(JavaExtractor.ref(creation.getType()));
             case CastExpr cast -> new Receiver.Typed(JavaExtractor.ref(cast.getType()));
             case EnclosedExpr enclosed -> receiver(enclosed.getInner());
@@ -242,6 +245,19 @@ final class FlowExtractor {
             case AssignExpr assign -> receiver(assign.getTarget());
             default -> new Receiver.Unknown();
         };
+    }
+
+    private List<Receiver> receivers(List<Expression> expressions) {
+        return expressions.stream().map(this::receiver).toList();
+    }
+
+    private Receiver nameChain(String dotted) {
+        String[] parts = dotted.split("\\.");
+        Receiver receiver = locals.getOrDefault(parts[0], new Receiver.Name(parts[0]));
+        for (int i = 1; i < parts.length; i++) {
+            receiver = new Receiver.Field(receiver, parts[i]);
+        }
+        return receiver;
     }
 
     private static Receiver typed(String name) {

@@ -24,7 +24,8 @@ class StructureTest {
                 package c
                   type Mode c/Mode.java:3-10
                     method next() 7-9
-                      8 return""", Fixtures.dump("structure"));
+                      8 return
+                dependency a.Walker -> a.b.Handler""", Fixtures.dump("structure"));
     }
 
     @Test

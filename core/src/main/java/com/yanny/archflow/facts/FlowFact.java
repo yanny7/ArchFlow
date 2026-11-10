@@ -5,8 +5,14 @@ import java.util.List;
 public sealed interface FlowFact {
     int line();
 
-    record Call(int line, Receiver receiver, String name, int args, String text) implements FlowFact {
-        public static final int ANY_ARGS = -1;
+    record Call(int line, Receiver receiver, String name, List<Receiver> args, String text) implements FlowFact {
+        public Call {
+            args = args == null ? null : List.copyOf(args);
+        }
+
+        public static Call anyArgs(int line, Receiver receiver, String name, String text) {
+            return new Call(line, receiver, name, null, text);
+        }
     }
 
     record Branch(int line, String subject, List<Arm> arms) implements FlowFact {

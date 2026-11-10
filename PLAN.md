@@ -21,7 +21,8 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
 - **Edges come only from the code.** Calls, dependencies and branches are read from the source, never declared.
 - **Resolution goes as far as declared types.** The linker resolves a call from the source set alone: imports,
   supertypes, the declared types of fields, locals and parameters, and the return types of the source set's methods.
-  There is no classpath and no compilation. A call that cannot be resolved this way is an unresolved call.
+  There is no classpath and no compilation. Of several overloads, a call takes the first whose parameters accept the
+  argument types it knows. A call that cannot be resolved this way is an unresolved call.
 - **Branches only where they matter.** An `if`, `switch` or loop appears in a flow view only when it contains a call
   that the view shows. Its condition is shown as source text.
 - **One extractor for every commit.** The working copy and the history go through the same code. Otherwise a diff
@@ -96,7 +97,7 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   - [x] 1b. Model: nodes, edges and flow in a stable order, with a text dump for tests.
   - [x] 1c. Extraction of structure: packages, types and methods with their location and number of lines.
   - [x] 1d. Extraction of flow: calls, branches, loops, returns and throws, with condition text.
-  - [ ] 1e. Linking: resolution as far as declared types, unresolved calls, dependencies.
+  - [x] 1e. Linking: resolution as far as declared types, unresolved calls, dependencies.
   - [ ] 1f. Calls through an interface or an overridden method (open question below).
 - [ ] 2. Views: all functions, outline (methods by size), dependencies.
 - [ ] 3. Diff: models of commits from git, the model as JSON for the cache and the viewer, diff of two models,

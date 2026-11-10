@@ -2,14 +2,24 @@ package com.yanny.archflow.facts;
 
 import com.yanny.archflow.model.Location;
 
+import java.util.ArrayList;
 import java.util.List;
 
-public record TypeFacts(String name, Location location, List<TypeRef> supertypes, List<FieldFacts> fields,
-                        List<MethodFacts> methods, List<TypeFacts> types) {
+public record TypeFacts(String name, Location location, TypeRef superclass, List<TypeRef> interfaces,
+                        List<FieldFacts> fields, List<MethodFacts> methods, List<TypeFacts> types) {
     public TypeFacts {
-        supertypes = List.copyOf(supertypes);
+        interfaces = List.copyOf(interfaces);
         fields = List.copyOf(fields);
         methods = List.copyOf(methods);
         types = List.copyOf(types);
+    }
+
+    public List<TypeRef> supertypes() {
+        List<TypeRef> supertypes = new ArrayList<>();
+        if (superclass != null) {
+            supertypes.add(superclass);
+        }
+        supertypes.addAll(interfaces);
+        return supertypes;
     }
 }

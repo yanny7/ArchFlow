@@ -12,7 +12,7 @@ class FlowTest {
                   type Flow a/Flow.java:5-72
                     method <init>() 13-15
                       14 call ? new Sink()
-                      14 call ? this()
+                      14 call a.Flow#<init>(Sink)
                     method <init>(Sink) 8-11
                       9 call ? sink.name()
                       9 call ? super()
@@ -44,7 +44,7 @@ class FlowTest {
                     method expressions(List) 51-67
                       52 call ? sink.name()
                       52 call ? sink.name().trim()
-                      52 call ? this.helper()
+                      52 call a.Flow#helper()
                       52 call ? sink.write()
                       54 call ? s.accepts()
                       54 if
@@ -75,6 +75,8 @@ class FlowTest {
                         44 call ? sink.drain()
                       46 loop do while (sink.accepts(1))
                         47 call ? sink.drain()
-                        48 call ? sink.accepts()""", Fixtures.dump("flow"));
+                        48 call ? sink.accepts()
+                call a.Flow#<init>() -> a.Flow#<init>(Sink)
+                call a.Flow#expressions(List) -> a.Flow#helper()""", Fixtures.dump("flow"));
     }
 }
