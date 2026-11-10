@@ -14,6 +14,7 @@ import com.github.javaparser.ast.body.RecordDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import com.github.javaparser.ast.nodeTypes.NodeWithExtends;
 import com.github.javaparser.ast.nodeTypes.NodeWithImplements;
+import com.github.javaparser.ast.stmt.BlockStmt;
 import com.github.javaparser.ast.type.ArrayType;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.IntersectionType;
@@ -21,6 +22,7 @@ import com.github.javaparser.ast.type.Type;
 import com.github.javaparser.ast.type.UnionType;
 import com.github.javaparser.ast.type.WildcardType;
 import com.yanny.archflow.facts.FieldFacts;
+import com.yanny.archflow.facts.FlowFact;
 import com.yanny.archflow.facts.FileFacts;
 import com.yanny.archflow.facts.Import;
 import com.yanny.archflow.facts.MethodFacts;
@@ -68,8 +70,10 @@ public final class JavaExtractor {
             switch (member) {
                 case FieldDeclaration field -> field.getVariables()
                         .forEach(v -> fields.add(new FieldFacts(v.getNameAsString(), ref(v.getType()))));
-                case MethodDeclaration method -> methods.add(method(file, method, method.getNameAsString(), ref(method.getType())));
-                case ConstructorDeclaration constructor -> methods.add(method(file, constructor, MethodFacts.CONSTRUCTOR, null));
+                case MethodDeclaration method -> methods.add(method(file, method, method.getNameAsString(),
+                        ref(method.getType()), method.getBody().orElse(null)));
+                case ConstructorDeclaration constructor -> methods.add(method(file, constructor, MethodFacts.CONSTRUCTOR,
+                        null, constructor.getBody()));
                 case TypeDeclaration<?> nested -> types.add(type(file, nested));
                 default -> {
                 }
@@ -78,11 +82,12 @@ public final class JavaExtractor {
         return new TypeFacts(type.getNameAsString(), location(file, type), supertypes, fields, methods, types);
     }
 
-    private MethodFacts method(String file, CallableDeclaration<?> method, String name, TypeRef returnType) {
+    private MethodFacts method(String file, CallableDeclaration<?> method, String name, TypeRef returnType, BlockStmt body) {
         List<Param> params = method.getParameters().stream()
                 .map(p -> new Param(p.getNameAsString(), ref(p.getType()).withDims(p.isVarArgs() ? 1 : 0)))
                 .toList();
-        return new MethodFacts(name, params, returnType, location(file, method));
+        List<FlowFact> flow = body == null ? List.of() : FlowExtractor.body(method.getParameters(), body);
+        return new MethodFacts(name, params, returnType, location(file, method), flow);
     }
 
     static TypeRef ref(Type type) {

@@ -95,7 +95,7 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   - [x] 1a. Build: Gradle wrapper, the four modules, the toolchain above.
   - [x] 1b. Model: nodes, edges and flow in a stable order, with a text dump for tests.
   - [x] 1c. Extraction of structure: packages, types and methods with their location and number of lines.
-  - [ ] 1d. Extraction of flow: calls, branches, loops, returns and throws, with condition text.
+  - [x] 1d. Extraction of flow: calls, branches, loops, returns and throws, with condition text.
   - [ ] 1e. Linking: resolution as far as declared types, unresolved calls, dependencies.
   - [ ] 1f. Calls through an interface or an overridden method (open question below).
 - [ ] 2. Views: all functions, outline (methods by size), dependencies.

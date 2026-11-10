@@ -1,6 +1,7 @@
 package com.yanny.archflow.link;
 
 import com.yanny.archflow.facts.FileFacts;
+import com.yanny.archflow.facts.FlowFact;
 import com.yanny.archflow.facts.MethodFacts;
 import com.yanny.archflow.facts.Param;
 import com.yanny.archflow.facts.TypeFacts;
@@ -8,6 +9,7 @@ import com.yanny.archflow.facts.TypeRef;
 import com.yanny.archflow.model.Model;
 import com.yanny.archflow.model.Node;
 import com.yanny.archflow.model.NodeKind;
+import com.yanny.archflow.model.Step;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,6 +20,7 @@ import java.util.stream.Collectors;
 
 public final class Linker {
     private final Map<String, Node> nodes = new LinkedHashMap<>();
+    private final Map<String, List<Step>> flows = new LinkedHashMap<>();
 
     public static Model link(List<FileFacts> files) {
         Linker linker = new Linker();
@@ -26,7 +29,7 @@ public final class Linker {
             String parent = file.packageName().isEmpty() ? null : file.packageName();
             file.types().forEach(type -> linker.type(type, parent));
         }
-        return new Model(List.copyOf(linker.nodes.values()), List.of(), Map.of());
+        return new Model(List.copyOf(linker.nodes.values()), List.of(), linker.flows);
     }
 
     private void packages(List<FileFacts> files) {
@@ -56,9 +59,28 @@ public final class Linker {
         }
         for (MethodFacts method : type.methods()) {
             String name = method.isConstructor() ? type.name() : method.name();
-            add(new Node(methodId(id, method), NodeKind.METHOD, name, id, method.location()));
+            String methodId = methodId(id, method);
+            if (add(new Node(methodId, NodeKind.METHOD, name, id, method.location())) && !method.body().isEmpty()) {
+                flows.put(methodId, steps(method.body()));
+            }
         }
         type.types().forEach(nested -> type(nested, id));
+    }
+
+    private List<Step> steps(List<FlowFact> facts) {
+        return facts.stream().map(this::step).toList();
+    }
+
+    private Step step(FlowFact fact) {
+        return switch (fact) {
+            case FlowFact.Call call -> new Step.Call(call.line(), null, call.text());
+            case FlowFact.Branch branch -> new Step.Branch(branch.line(), branch.subject(), branch.arms().stream()
+                    .map(arm -> new Step.Arm(arm.condition(), steps(arm.facts())))
+                    .toList());
+            case FlowFact.Loop loop -> new Step.Loop(loop.line(), loop.header(), steps(loop.facts()));
+            case FlowFact.Return ret -> new Step.Return(ret.line());
+            case FlowFact.Throw thrown -> new Step.Throw(thrown.line(), thrown.text());
+        };
     }
 
     static String methodId(String typeId, MethodFacts method) {

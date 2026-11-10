@@ -17,12 +17,14 @@ class StructureTest {
                     method walk(int[],String[]) 12-13
                     type State 15-19
                       method values() 16-18
+                        17 return
                   package b
                     type Handler a/b/Handler.java:3-5
                       method handle(Object) 4-4
                 package c
                   type Mode c/Mode.java:3-10
-                    method next() 7-9""", Fixtures.dump("structure"));
+                    method next() 7-9
+                      8 return""", Fixtures.dump("structure"));
     }
 
     @Test

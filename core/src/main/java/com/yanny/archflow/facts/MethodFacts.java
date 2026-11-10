@@ -4,11 +4,12 @@ import com.yanny.archflow.model.Location;
 
 import java.util.List;
 
-public record MethodFacts(String name, List<Param> params, TypeRef returnType, Location location) {
+public record MethodFacts(String name, List<Param> params, TypeRef returnType, Location location, List<FlowFact> body) {
     public static final String CONSTRUCTOR = "<init>";
 
     public MethodFacts {
         params = List.copyOf(params);
+        body = List.copyOf(body);
     }
 
     public boolean isConstructor() {
