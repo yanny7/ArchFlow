@@ -28,9 +28,27 @@ final class MethodPairing {
             List<Node> newNodes = added.getOrDefault(key, List.of());
             if (oldNodes.size() == 1 && newNodes.size() == 1) {
                 pairs.put(oldNodes.getFirst().id(), newNodes.getFirst().id());
+            } else {
+                pairByParameterCount(oldNodes, newNodes, pairs);
             }
         });
         return pairs;
+    }
+
+    private static void pairByParameterCount(List<Node> oldNodes, List<Node> newNodes, Map<String, String> pairs) {
+        Map<Integer, List<Node>> oldByCount = oldNodes.stream().collect(Collectors.groupingBy(MethodPairing::parameterCount));
+        Map<Integer, List<Node>> newByCount = newNodes.stream().collect(Collectors.groupingBy(MethodPairing::parameterCount));
+        oldByCount.forEach((count, oldGroup) -> {
+            List<Node> newGroup = newByCount.getOrDefault(count, List.of());
+            if (oldGroup.size() == 1 && newGroup.size() == 1) {
+                pairs.put(oldGroup.getFirst().id(), newGroup.getFirst().id());
+            }
+        });
+    }
+
+    private static int parameterCount(Node method) {
+        String params = method.id().substring(method.id().indexOf('(') + 1, method.id().lastIndexOf(')'));
+        return params.isEmpty() ? 0 : params.split(",").length;
     }
 
     private static Map<String, List<Node>> byTypeAndName(Model model, Set<String> otherIds) {

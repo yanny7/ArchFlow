@@ -20,6 +20,8 @@ class ViewerDataTest {
                 type a.Walker in a [inside]
                 method a.Walker#<instance-init>() in a.Walker [added]
                   call a.Context
+                method a.Walker#run(long) in a.Walker [changed]
+                method a.Walker#run(long,int) in a.Walker [changed]
                 method a.Walker#step(long) in a.Walker [changed]
                   call b.Util#log(int)
                 method a.Walker#walk(int) in a.Walker [changed]
@@ -38,6 +40,8 @@ class ViewerDataTest {
                 change a.Context: + type a.Context
                 change a.Old: - type a.Old
                 change a.Walker#<instance-init>(): + method a.Walker#<instance-init>()
+                change a.Walker#run(long): ~ method a.Walker#run(long) (was a.Walker#run(int))
+                change a.Walker#run(long,int): ~ method a.Walker#run(long,int) (was a.Walker#run(int,int))
                 change a.Walker#step(long): ~ method a.Walker#step(long) (was a.Walker#step(int))
                 change a.Walker#walk(int): ~ method a.Walker#walk(int)
                 change a.Walker: + dependency a.Walker -> a.Context""", String.join("\n", lines(graph)));

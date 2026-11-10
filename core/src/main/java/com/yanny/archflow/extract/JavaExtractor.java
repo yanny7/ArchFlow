@@ -84,12 +84,14 @@ public final class JavaExtractor {
                     List<Node> parts = field.isStatic() || isInterface ? staticParts : instanceParts;
                     for (var variable : field.getVariables()) {
                         fields.add(new FieldFacts(variable.getNameAsString(), ref(variable.getType())));
-                        variable.getInitializer().ifPresent(parts::add);
+                        if (variable.getInitializer().isPresent()) {
+                            parts.add(variable);
+                        }
                     }
                 }
                 case InitializerDeclaration initializer -> (initializer.isStatic() ? staticParts : instanceParts).add(initializer.getBody());
                 case MethodDeclaration method -> methods.add(method(file, method, method.getNameAsString(),
-                        ref(method.getType()), method.getBody().orElse(null)));
+                        method.getType(), method.getBody().orElse(null)));
                 case ConstructorDeclaration constructor -> methods.add(method(file, constructor, MethodFacts.CONSTRUCTOR,
                         null, constructor.getBody()));
                 case TypeDeclaration<?> nested -> types.add(type(file, nested));
@@ -103,7 +105,8 @@ public final class JavaExtractor {
             for (var component : record.getParameters()) {
                 String name = component.getNameAsString();
                 if (methods.stream().noneMatch(m -> m.name().equals(name) && m.params().isEmpty())) {
-                    methods.add(new MethodFacts(name, List.of(), ref(component.getType()), location(file, component), List.of()));
+                    methods.add(new MethodFacts(name, List.of(), ref(component.getType()), location(file, component), false,
+                            List.of(), List.of()));
                 }
             }
         }
@@ -111,19 +114,22 @@ public final class JavaExtractor {
     }
 
     private void initializer(String file, List<MethodFacts> methods, String name, List<Node> parts) {
-        List<FlowFact> flow = FlowExtractor.initializers(parts);
-        if (!flow.isEmpty()) {
+        FlowExtractor.Extracted extracted = FlowExtractor.initializers(parts);
+        if (!extracted.flow().isEmpty() || !extracted.implementations().isEmpty()) {
             Location location = new Location(file, location(file, parts.getFirst()).line(), location(file, parts.getLast()).endLine());
-            methods.add(new MethodFacts(name, List.of(), null, location, flow));
+            methods.add(new MethodFacts(name, List.of(), null, location, false, extracted.flow(), extracted.implementations()));
         }
     }
 
-    private MethodFacts method(String file, CallableDeclaration<?> method, String name, TypeRef returnType, BlockStmt body) {
+    private MethodFacts method(String file, CallableDeclaration<?> method, String name, Type returnType, BlockStmt body) {
         List<Param> params = method.getParameters().stream()
                 .map(p -> new Param(p.getNameAsString(), ref(p.getType()).withDims(p.isVarArgs() ? 1 : 0), p.isVarArgs()))
                 .toList();
-        List<FlowFact> flow = body == null ? List.of() : FlowExtractor.body(method.getParameters(), body);
-        return new MethodFacts(name, params, returnType, location(file, method), flow);
+        FlowExtractor.Extracted extracted = body == null
+                ? new FlowExtractor.Extracted(List.of(), List.of())
+                : FlowExtractor.body(method.getParameters(), returnType, body);
+        return new MethodFacts(name, params, returnType == null ? null : ref(returnType), location(file, method), body == null,
+                extracted.flow(), extracted.implementations());
     }
 
     static TypeRef ref(Type type) {

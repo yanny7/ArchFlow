@@ -1,6 +1,7 @@
 package com.yanny.archflow.extract;
 
 import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.body.Parameter;
 import com.github.javaparser.ast.body.VariableDeclarator;
 import com.github.javaparser.ast.expr.*;
@@ -8,6 +9,7 @@ import com.github.javaparser.ast.stmt.*;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.Type;
 import com.yanny.archflow.facts.FlowFact;
+import com.yanny.archflow.facts.Implementation;
 import com.yanny.archflow.facts.MethodFacts;
 import com.yanny.archflow.facts.Receiver;
 import com.yanny.archflow.facts.TypeRef;
@@ -19,29 +21,79 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 final class FlowExtractor {
+    record Extracted(List<FlowFact> flow, List<Implementation> implementations) {
+    }
+
     private final Map<String, Receiver> locals = new HashMap<>();
+    private final List<Implementation> implementations = new ArrayList<>();
+    private final Type returnType;
     private boolean inLambda;
 
-    private FlowExtractor(List<Parameter> params) {
+    private FlowExtractor(List<Parameter> params, Type returnType) {
+        this.returnType = returnType;
         params.forEach(this::declare);
     }
 
-    static List<FlowFact> body(List<Parameter> params, BlockStmt body) {
+    static Extracted body(List<Parameter> params, Type returnType, BlockStmt body) {
+        FlowExtractor extractor = new FlowExtractor(params, returnType);
         List<FlowFact> out = new ArrayList<>();
-        new FlowExtractor(params).statement(body, out);
-        return out;
+        extractor.statement(body, out);
+        return new Extracted(out, extractor.implementations);
     }
 
-    static List<FlowFact> initializers(List<Node> parts) {
-        FlowExtractor extractor = new FlowExtractor(List.of());
+    static Extracted initializers(List<Node> parts) {
+        FlowExtractor extractor = new FlowExtractor(List.of(), null);
         List<FlowFact> out = new ArrayList<>();
         for (Node part : parts) {
             switch (part) {
+                case VariableDeclarator variable -> variable.getInitializer().ifPresent(init -> {
+                    extractor.expect(variable.getType(), init);
+                    extractor.expression(init, out);
+                });
                 case Expression expression -> extractor.expression(expression, out);
                 case Statement statement -> extractor.statement(statement, out);
                 default -> throw new IllegalArgumentException(part.getClass().getName());
             }
         }
+        return new Extracted(out, extractor.implementations);
+    }
+
+    private void expect(Type declared, Expression init) {
+        if (inLambda || declared.isVarType() || declared.isUnknownType()) {
+            return;
+        }
+        List<TypeRef> types = new ArrayList<>();
+        flatten(JavaExtractor.ref(declared), types);
+        List<Expression> candidates = switch (init) {
+            case MethodCallExpr call -> call.getArguments();
+            case ObjectCreationExpr creation -> creation.getArguments();
+            case ArrayInitializerExpr array -> array.getValues();
+            case ArrayCreationExpr array -> array.getInitializer().map(ArrayInitializerExpr::getValues).orElse(new NodeList<>());
+            default -> List.of(init);
+        };
+        for (Expression candidate : candidates) {
+            switch (candidate) {
+                case MethodReferenceExpr reference -> implementations.add(
+                        new Implementation(types, referenceCall(reference), line(reference), line(reference), List.of()));
+                case LambdaExpr lambda -> implementations.add(
+                        new Implementation(types, null, line(lambda), lambda.getEnd().orElseThrow().line, lambdaBody(lambda)));
+                default -> {
+                }
+            }
+        }
+    }
+
+    private static void flatten(TypeRef type, List<TypeRef> out) {
+        out.add(type);
+        type.args().forEach(arg -> flatten(arg, out));
+    }
+
+    private List<FlowFact> lambdaBody(LambdaExpr lambda) {
+        List<FlowFact> out = new ArrayList<>();
+        lambda.getParameters().forEach(this::declare);
+        inLambda = true;
+        statement(lambda.getBody(), out);
+        inLambda = false;
         return out;
     }
 
@@ -91,6 +143,9 @@ final class FlowExtractor {
                 tryStmt.getFinallyBlock().ifPresent(b -> statement(b, out));
             }
             case ReturnStmt returnStmt -> {
+                if (returnType != null) {
+                    returnStmt.getExpression().ifPresent(e -> expect(returnType, e));
+                }
                 returnStmt.getExpression().ifPresent(e -> expression(e, out));
                 if (!inLambda) {
                     out.add(new FlowFact.Return(line));
@@ -188,17 +243,10 @@ final class FlowExtractor {
                 out.add(new FlowFact.Call(line, receiver, MethodFacts.CONSTRUCTOR, receivers(creation.getArguments()), compact(creation)));
             }
             case MethodReferenceExpr reference -> {
-                Receiver receiver;
-                if (reference.getScope() instanceof TypeExpr type) {
-                    receiver = type.getType() instanceof ClassOrInterfaceType named && named.getTypeArguments().isEmpty()
-                            ? nameChain(named.getNameWithScope())
-                            : new Receiver.Typed(JavaExtractor.ref(type.getType()));
-                } else {
+                if (!(reference.getScope() instanceof TypeExpr)) {
                     expression(reference.getScope(), out);
-                    receiver = receiver(reference.getScope());
                 }
-                String name = reference.getIdentifier().equals("new") ? MethodFacts.CONSTRUCTOR : reference.getIdentifier();
-                out.add(FlowFact.Call.anyArgs(line, receiver, name, compact(reference)));
+                out.add(referenceCall(reference));
             }
             case LambdaExpr lambda -> {
                 lambda.getParameters().forEach(this::declare);
@@ -219,6 +267,7 @@ final class FlowExtractor {
             case SwitchExpr switchExpr -> switchBranch(line, switchExpr.getSelector(), switchExpr.getEntries(), out);
             case VariableDeclarationExpr declaration -> {
                 for (VariableDeclarator variable : declaration.getVariables()) {
+                    variable.getInitializer().ifPresent(e -> expect(variable.getType(), e));
                     variable.getInitializer().ifPresent(e -> expression(e, out));
                     Receiver inferred = variable.getInitializer().map(this::receiver).orElse(new Receiver.Unknown());
                     declare(variable.getNameAsString(), variable.getType(), inferred);
@@ -227,6 +276,19 @@ final class FlowExtractor {
             case TypePatternExpr pattern -> declare(pattern.getNameAsString(), pattern.getType(), new Receiver.Unknown());
             default -> children(expression, out);
         }
+    }
+
+    private FlowFact.Call referenceCall(MethodReferenceExpr reference) {
+        Receiver receiver;
+        if (reference.getScope() instanceof TypeExpr type) {
+            receiver = type.getType() instanceof ClassOrInterfaceType named && named.getTypeArguments().isEmpty()
+                    ? nameChain(named.getNameWithScope())
+                    : new Receiver.Typed(JavaExtractor.ref(type.getType()));
+        } else {
+            receiver = receiver(reference.getScope());
+        }
+        String name = reference.getIdentifier().equals("new") ? MethodFacts.CONSTRUCTOR : reference.getIdentifier();
+        return FlowFact.Call.anyArgs(line(reference), receiver, name, compact(reference));
     }
 
     private void children(Node node, List<FlowFact> out) {

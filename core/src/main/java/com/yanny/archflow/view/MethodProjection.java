@@ -38,7 +38,7 @@ final class MethodProjection {
     }
 
     Model project() {
-        List<Node> kept = model.nodes().stream().filter(this::visible).toList();
+        List<Node> kept = model.nodes().stream().filter(this::visible).map(this::reparent).toList();
         Map<String, List<Step>> flows = new LinkedHashMap<>();
         List<Edge> edges = new ArrayList<>();
         for (Node node : kept) {
@@ -55,6 +55,15 @@ final class MethodProjection {
             }
         }
         return new Model(kept, edges, flows);
+    }
+
+    private Node reparent(Node node) {
+        String parent = node.parent();
+        while (parent != null && !visible(parent)) {
+            parent = nodes.get(parent).parent();
+        }
+        return parent == null || parent.equals(node.parent()) ? node
+                : new Node(node.id(), node.kind(), node.name(), parent, node.location());
     }
 
     private boolean visible(String id) {

@@ -15,6 +15,8 @@ class LinkingTest {
                       9 call ? value.first()
                       9 call external java.util.List.of()
                       14 call util.Strings#trim(String)
+                      method lambda1 9-9
+                        9 call ? value.first()
                     method <init>() 17-19
                       18 call core.Context#create(String[])
                       18 call core.Base#<init>(Context)
@@ -122,6 +124,7 @@ class LinkingTest {
                 dependency core.handlers.Echo -> core.Context
                 dependency core.handlers.Echo -> core.Handler
                 dependency core.handlers.Echo -> core.Visitor
+                override app.Walker#<clinit>()$lambda1 -> core.Visitor#visit(T)
                 override core.handlers.Echo#handle(Context) -> core.Handler#handle(Context)
                 override core.handlers.Echo#handle(Context,int) -> core.Handler#handle(Context,int)
                 override core.handlers.Echo#visit(Context) -> core.Visitor#visit(T)""", Fixtures.dump("linking"));

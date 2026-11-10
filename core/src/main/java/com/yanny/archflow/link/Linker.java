@@ -3,11 +3,13 @@ package com.yanny.archflow.link;
 import com.yanny.archflow.facts.FieldFacts;
 import com.yanny.archflow.facts.FileFacts;
 import com.yanny.archflow.facts.FlowFact;
+import com.yanny.archflow.facts.Implementation;
 import com.yanny.archflow.facts.MethodFacts;
 import com.yanny.archflow.facts.Param;
 import com.yanny.archflow.facts.TypeRef;
 import com.yanny.archflow.link.TypeIndex.TypeInfo;
 import com.yanny.archflow.model.Edge;
+import com.yanny.archflow.model.Location;
 import com.yanny.archflow.model.EdgeKind;
 import com.yanny.archflow.model.Model;
 import com.yanny.archflow.model.Node;
@@ -86,7 +88,45 @@ public final class Linker {
                 index.overridden(type, method)
                         .forEach(hit -> edges.add(new Edge(EdgeKind.OVERRIDE, id, methodId(hit.owner().id(), hit.method()))));
             }
+            implementations(type, method, id);
         }
+    }
+
+    private void implementations(TypeInfo type, MethodFacts method, String id) {
+        int lambdas = 0;
+        for (Implementation implementation : method.implementations()) {
+            String implemented = functionalMethod(implementation.types(), type);
+            if (implemented == null) {
+                continue;
+            }
+            if (!implementation.isLambda()) {
+                String target = resolver.target(implementation.reference(), type).id();
+                if (target != null && target.contains("#")) {
+                    edges.add(new Edge(EdgeKind.OVERRIDE, target, implemented));
+                }
+                continue;
+            }
+            String lambda = id + "$lambda" + ++lambdas;
+            String name = "lambda " + TypeIndex.lastSegment(implemented.substring(0, implemented.indexOf('#')));
+            Location location = new Location(method.location().file(), implementation.line(), implementation.endLine());
+            add(new Node(lambda, NodeKind.METHOD, name, id, location));
+            if (!implementation.body().isEmpty()) {
+                flows.put(lambda, steps(implementation.body(), type, lambda));
+            }
+            edges.add(new Edge(EdgeKind.OVERRIDE, lambda, implemented));
+        }
+    }
+
+    private String functionalMethod(List<TypeRef> types, TypeInfo scope) {
+        for (TypeRef candidate : types) {
+            TypeInfo type = index.resolve(candidate, scope);
+            List<MethodFacts> abstractMethods = type == null ? List.of()
+                    : type.facts().methods().stream().filter(MethodFacts::abstractMethod).toList();
+            if (abstractMethods.size() == 1) {
+                return methodId(type.id(), abstractMethods.getFirst());
+            }
+        }
+        return null;
     }
 
     private static String packageOf(TypeInfo type) {

@@ -202,10 +202,10 @@
     }
 
     function label(node) {
-        if (node.kind === 'method') {
-            return node.id.substring(node.id.indexOf('#') + 1);
-        }
         const parent = parentOf(node.id);
+        if (node.kind === 'method') {
+            return parent && state.byId.get(parent).kind === 'method' ? node.name : node.id.substring(node.id.indexOf('#') + 1);
+        }
         if (node.kind === 'package' && parent) {
             return node.id.substring(parent.length + 1);
         }

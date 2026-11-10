@@ -17,6 +17,8 @@ class ModelDiffTest {
                 - type a.Old
                 * type a.Walker
                 + method a.Walker#<instance-init>()
+                ~ method a.Walker#run(long) (was a.Walker#run(int))
+                ~ method a.Walker#run(long,int) (was a.Walker#run(int,int))
                 ~ method a.Walker#step(long) (was a.Walker#step(int))
                 ~ method a.Walker#walk(int)
                 + dependency a.Walker -> a.Context""", String.join("\n", DiffText.lines(diff, true)));

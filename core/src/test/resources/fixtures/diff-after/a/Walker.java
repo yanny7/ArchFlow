@@ -9,6 +9,12 @@ class Walker {
         }
     }
 
+    void run(long depth) {
+    }
+
+    void run(long depth, int limit) {
+    }
+
     void step(long depth) {
 
         b.Util.log((int) depth);

@@ -188,6 +188,36 @@ class ViewTest {
                 dependency app.Walker -> app.State""", dump(View.DEPENDENCIES, OPTIONS));
     }
 
+    @Test
+    void outlineCarriesCallsOfAnInterfaceOnToLambdasAndMethodReferencesThatImplementIt() {
+        assertEquals("""
+                package app
+                  type Handler app/Handler.java:3-9
+                    method accepts(int) 6-8
+                  type Instructions app/Instructions.java:3-7
+                    method execute(int) 4-6
+                  type Reads app/Reads.java:3-7
+                    method execute(int) 4-6
+                  type Walker app/Walker.java:5-22
+                    method <clinit>() 6-8
+                      7 call app.Instructions#execute(int)
+                      8 call app.Reads#execute(int)
+                    method fallback() 11-13
+                      12 call app.Reads#execute(int)
+                    method handle(int) 15-21
+                      16 loop for (Handler handler : HANDLERS)
+                        17 call app.Reads#execute(int)
+                        17 call app.Instructions#execute(int)
+                call app.Walker#<clinit>() -> app.Instructions#execute(int)
+                call app.Walker#<clinit>() -> app.Reads#execute(int)
+                call app.Walker#fallback() -> app.Reads#execute(int)
+                call app.Walker#handle(int) -> app.Instructions#execute(int)
+                call app.Walker#handle(int) -> app.Reads#execute(int)
+                dependency app.Walker -> app.Handler
+                dependency app.Walker -> app.Instructions
+                dependency app.Walker -> app.Reads""", String.join("\n", ModelDump.dump(View.OUTLINE.project(Fixtures.model("functional"), OPTIONS.withMinLines(3)))));
+    }
+
     private static String dump(View view, ViewOptions options) {
         return String.join("\n", ModelDump.dump(view.project(Fixtures.model("views"), options)));
     }
