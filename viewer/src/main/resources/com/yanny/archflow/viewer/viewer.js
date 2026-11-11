@@ -8,6 +8,7 @@
     const PADDING = 20;
     const FOCUS_ZOOM = 1.5;
     const PULSE = {low: 0.1, high: 0.45, duration: 800};
+    const BORDER = {width: 2, chosen: 3, pulse: 5, faint: 0.45};
     const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const TRAIL_LENGTH = 100;
     const METHOD_RADIUS = 12;
@@ -279,7 +280,7 @@
         for (const node of state.graph.nodes) {
             if (isVisible(node.id)) {
                 const collapsed = state.children.has(node.id) && !state.expanded.has(node.id);
-                const classes = [node.kind, node.change, collapsed ? 'collapsed' : null].filter(Boolean).join(' ');
+                const classes = [node.kind, node.change].filter(Boolean).join(' ');
                 const count = collapsed ? ' [' + state.children.get(node.id).length + ']' : '';
                 elements.push({group: 'nodes', data: {id: node.id, label: label(node) + count, parent: parentOf(node.id) || undefined}, classes});
             }
@@ -349,7 +350,8 @@
     }
 
     function breathe(element, up, generation) {
-        element.animation({style: {'underlay-opacity': up ? PULSE.high : PULSE.low}, duration: PULSE.duration, easing: 'ease-in-out-sine'})
+        const style = element.isNode() ? {'border-width': up ? BORDER.pulse : BORDER.chosen} : {'underlay-opacity': up ? PULSE.high : PULSE.low};
+        element.animation({style, duration: PULSE.duration, easing: 'ease-in-out-sine'})
             .play().promise('completed').then(() => {
                 if (pulse.generation === generation && !element.removed()) {
                     breathe(element, !up, generation);
@@ -361,7 +363,7 @@
         pulse.generation++;
         const alive = pulse.elements.filter(element => !element.removed());
         alive.stop(true);
-        alive.removeStyle('underlay-opacity');
+        alive.removeStyle('underlay-opacity border-width');
         pulse.elements = cy.collection();
     }
 
@@ -642,22 +644,21 @@
             {selector: 'node', style: {
                 'label': 'data(label)', 'font-size': 11, 'color': text, 'text-valign': 'center', 'text-halign': 'center',
                 'shape': 'round-rectangle', 'width': node => textWidth(node) + 12, 'height': node => fontSize(node) * 1.3 + 12,
-                'border-width': 1, 'border-color': border, 'background-color': color('--node')
+                'border-width': BORDER.width, 'border-color': border, 'border-opacity': BORDER.faint, 'background-color': color('--node')
             }},
             {selector: 'node.package', style: {'background-color': color('--package'), 'shape': 'cut-rectangle'}},
             {selector: 'node.type', style: {'background-color': color('--type')}},
             {selector: 'node.method', style: {'font-size': 10, 'corner-radius': METHOD_RADIUS}},
             {selector: 'node', style: {'padding': '0px'}},
-            {selector: 'node.collapsed', style: {'border-width': 2}},
             {selector: ':parent', style: {
                 'text-valign': 'top', 'text-halign': 'center', 'text-margin-y': -4, 'padding': '12px',
                 'background-opacity': 0.5, 'font-weight': 'bold'
             }},
-            {selector: 'node.added', style: {'border-color': color('--added'), 'border-width': 3}},
-            {selector: 'node.removed', style: {'border-color': color('--removed'), 'border-width': 3, 'opacity': 0.6}},
-            {selector: 'node.changed', style: {'border-color': color('--changed'), 'border-width': 3}},
-            {selector: 'node.inside', style: {'border-color': color('--inside'), 'border-width': 2}},
-            {selector: 'node.chosen', style: {'underlay-color': color('--link'), 'underlay-opacity': PULSE.low, 'underlay-padding': 6}},
+            {selector: 'node.chosen', style: {'border-color': text, 'border-opacity': 1, 'border-width': BORDER.chosen}},
+            {selector: 'node.added', style: {'border-color': color('--added')}},
+            {selector: 'node.removed', style: {'border-color': color('--removed')}},
+            {selector: 'node.changed', style: {'border-color': color('--changed')}},
+            {selector: 'node.inside', style: {'border-color': color('--inside')}},
             {selector: 'edge', style: {
                 'curve-style': 'bezier', 'width': 'data(width)', 'line-color': muted, 'target-arrow-color': muted,
                 'target-arrow-shape': 'triangle', 'arrow-scale': 0.8, 'opacity': 0.8
