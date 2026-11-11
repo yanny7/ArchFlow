@@ -4,6 +4,8 @@
     const VIEW_LABELS = {'outline': 'Outline', 'all-functions': 'All functions', 'dependencies': 'Dependencies'};
     const EDGE_KINDS = ['call', 'override', 'dependency'];
     const DEFAULT_KINDS = {'outline': ['call', 'override'], 'all-functions': ['call', 'override'], 'dependencies': ['dependency']};
+    const FIT = {fit: true};
+    const PADDING = 20;
 
     cytoscape.use(cytoscapeElk);
 
@@ -18,9 +20,9 @@
     document.getElementById('collapse').addEventListener('click', () => {
         state.expanded.clear();
         autoExpand();
-        render();
+        render(FIT);
     });
-    document.getElementById('fit').addEventListener('click', () => cy.fit(undefined, 20));
+    document.getElementById('fit').addEventListener('click', () => cy.fit(undefined, PADDING));
 
     window.archflowTheme = function (theme) {
         document.documentElement.dataset.theme = theme;
@@ -66,7 +68,7 @@
         }
         renderKinds();
         renderChanges();
-        render();
+        render(FIT);
         select(state.byId.has(state.selected) ? state.selected : null);
     }
 
@@ -132,17 +134,13 @@
         } else {
             state.expanded.add(id);
         }
-        render();
+        render({anchor: id});
     }
 
     function reveal(id) {
         ancestors(id).forEach(ancestor => state.expanded.add(ancestor));
-        render();
+        render({center: id});
         select(id);
-        const element = cy.getElementById(id);
-        if (element.nonempty()) {
-            cy.animate({center: {eles: element}, duration: 200});
-        }
     }
 
     function expandChanges() {
@@ -151,10 +149,12 @@
                 ancestors(node.id).forEach(ancestor => state.expanded.add(ancestor));
             }
         }
-        render();
+        render(FIT);
     }
 
-    function render() {
+    function render(keep) {
+        const anchor = keep && keep.anchor ? cy.getElementById(keep.anchor) : cy.collection();
+        const before = anchor.nonempty() ? anchor.renderedPosition() : null;
         const elements = [];
         for (const node of state.graph.nodes) {
             if (isVisible(node.id)) {
@@ -190,8 +190,8 @@
             cy.elements().remove();
             cy.add(elements);
         });
-        cy.layout({
-            name: 'elk', nodeDimensionsIncludeLabels: true, fit: true, padding: 20, animate: false,
+        const layout = cy.layout({
+            name: 'elk', nodeDimensionsIncludeLabels: true, fit: false, animate: false,
             elk: {
                 'algorithm': 'layered',
                 'elk.direction': 'RIGHT',
@@ -200,9 +200,29 @@
                 'elk.spacing.nodeNode': 20,
                 'elk.padding': '[top=30,left=12,bottom=12,right=12]'
             }
-        }).run();
+        });
+        layout.one('layoutstop', () => keepViewport(keep, before));
+        layout.run();
         if (state.selected && cy.getElementById(state.selected).nonempty()) {
             cy.getElementById(state.selected).select();
+        }
+    }
+
+    function keepViewport(keep, before) {
+        if (keep && keep.fit) {
+            cy.fit(undefined, PADDING);
+            return;
+        }
+        const id = keep && (keep.anchor || keep.center);
+        const element = id ? cy.getElementById(id) : cy.collection();
+        if (element.empty()) {
+            return;
+        }
+        if (before) {
+            const after = element.renderedPosition();
+            cy.panBy({x: before.x - after.x, y: before.y - after.y});
+        } else {
+            cy.animate({center: {eles: element}, duration: 200});
         }
     }
 
