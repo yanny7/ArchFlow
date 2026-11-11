@@ -97,8 +97,8 @@ codebase is ALI's graph analysis (`ali/common/.../plugin/server/graph`, branch `
 - Each fact has its own visual channel: node kind by fill and shape, edge kind by line pattern and arrow, change by
   color only (node border, edge line), selection by a full border on nodes and a halo on edges. A collapsed node shows
   `[n]` children. The legend explains every style.
-- Colors come from the Ant Design palette (`viewer.css`): added green, removed red, changed purple, changed inside
-  gold, selection blue. A selected node and an edge in focus take the main shade (step 6 of the light palette, 7 of
+- Colors come from the Ant Design palette (`viewer.css`): added green, removed red, changed orange, changed inside
+  yellow, selection blue. A selected node and an edge in focus take the main shade (step 6 of the light palette, 7 of
   the dark one); an unselected node and a faded edge take the secondary shade (step 3, or 5 of the dark palette).
 - The last expanded node is the focus: edges that neither start nor end inside it fade.
 - Show: Everything, Changes and neighbours (the changed nodes and the ends of changed edges) or Selection and
