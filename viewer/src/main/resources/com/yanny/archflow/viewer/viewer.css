@@ -50,6 +50,8 @@ body {
   border-right: 1px solid var(--border);
   resize: horizontal;
 }
+#controls { position: sticky; top: -12px; margin: -12px -12px 0; padding: 12px 12px 2px; background: var(--panel);
+  border-bottom: 1px solid var(--border); z-index: 1; }
 #graph { flex: 1; min-width: 0; position: relative; }
 #message { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted);
   font-size: 14px; pointer-events: none; z-index: 1; }

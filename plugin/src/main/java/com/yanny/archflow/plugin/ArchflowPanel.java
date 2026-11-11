@@ -8,16 +8,19 @@ import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.openapi.vfs.newvfs.BulkFileListener;
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent;
 import com.intellij.ui.JBColor;
+import com.intellij.ui.SimpleListCellRenderer;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.ui.jcef.JBCefBrowser;
 import com.intellij.ui.jcef.JBCefBrowserBase;
 import com.intellij.ui.jcef.JBCefJSQuery;
 import com.intellij.util.Alarm;
+import com.intellij.util.ui.WrapLayout;
 import com.yanny.archflow.git.GitRepo;
 import com.yanny.archflow.viewer.ViewerPage;
 import org.cef.browser.CefBrowser;
@@ -25,6 +28,7 @@ import org.cef.browser.CefFrame;
 import org.cef.handler.CefLoadHandlerAdapter;
 
 import javax.swing.JButton;
+import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
@@ -34,17 +38,18 @@ import java.util.Arrays;
 import java.util.List;
 
 final class ArchflowPanel extends JPanel implements Disposable {
-    private record Choice(String revision, String label) {
+    private record Choice(String revision, String label, String description) {
         @Override
         public String toString() {
             return label;
         }
     }
 
-    private static final Choice NONE = new Choice(null, "None");
-    private static final Choice WORKING_COPY = new Choice(null, "Working copy");
+    private static final Choice NONE = new Choice(null, "None", "None");
+    private static final Choice WORKING_COPY = new Choice(null, "Working copy", "Working copy");
     private static final int HISTORY = 100;
     private static final int REFRESH_DELAY_MS = 1500;
+    private static final int LABEL_LENGTH = 50;
 
     private final Project project;
     private final JBCefBrowser browser = new JBCefBrowser();
@@ -86,7 +91,19 @@ final class ArchflowPanel extends JPanel implements Disposable {
         JButton show = new JButton("Show");
         show.addActionListener(event -> rebuild());
         paths.addActionListener(event -> rebuild());
-        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        for (ComboBox<Choice> combo : List.of(from, to)) {
+            combo.setSwingPopup(false);
+            combo.setRenderer(new SimpleListCellRenderer<>() {
+                @Override
+                public void customize(JList<? extends Choice> list, Choice value, int index, boolean selected, boolean focus) {
+                    if (value != null) {
+                        setText(index < 0 ? value.label() : value.description());
+                    }
+                }
+            });
+            combo.addActionListener(event -> combo.setToolTipText(description(combo)));
+        }
+        JPanel toolbar = new JPanel(new WrapLayout(FlowLayout.LEFT));
         toolbar.add(new JBLabel("From"));
         toolbar.add(from);
         toolbar.add(new JBLabel("To"));
@@ -128,7 +145,9 @@ final class ArchflowPanel extends JPanel implements Disposable {
             }
             ApplicationManager.getApplication().invokeLater(() -> {
                 for (GitRepo.CommitInfo commit : commits) {
-                    Choice choice = new Choice(commit.id(), ArchflowService.shortId(commit.id()) + " " + commit.message());
+                    String id = ArchflowService.shortId(commit.id()) + " ";
+                    String label = id + StringUtil.shortenTextWithEllipsis(commit.message(), LABEL_LENGTH, 0);
+                    Choice choice = new Choice(commit.id(), label, id + commit.message());
                     from.addItem(choice);
                     to.addItem(choice);
                 }
@@ -138,6 +157,10 @@ final class ArchflowPanel extends JPanel implements Disposable {
                 rebuild();
             }, project.getDisposed());
         });
+    }
+
+    private static String description(ComboBox<Choice> combo) {
+        return combo.getSelectedItem() instanceof Choice choice ? choice.description() : null;
     }
 
     private void rebuild() {
