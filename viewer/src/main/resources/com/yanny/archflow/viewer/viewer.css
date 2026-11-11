@@ -131,4 +131,3 @@ a:hover { text-decoration: underline; }
 .swatch.removed line + polygon { fill: var(--removed); }
 .swatch.changed line { stroke: var(--changed); }
 .swatch.changed line + polygon { fill: var(--changed); }
-#legend .legend-note { color: var(--muted); font-style: italic; }
