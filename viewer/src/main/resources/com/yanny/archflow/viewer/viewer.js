@@ -9,7 +9,7 @@
 
     cytoscape.use(cytoscapeElk);
 
-    const state = {data: null, graph: null, byId: new Map(), children: new Map(), expanded: new Set(), kinds: new Set(), selected: null};
+    const state = {data: null, graph: null, byId: new Map(), children: new Map(), expanded: new Set(), kinds: new Set(), selected: null, focus: null};
     const measure = document.createElement('canvas').getContext('2d');
     const cy = cytoscape({container: document.getElementById('graph'), style: styles()});
 
@@ -19,6 +19,7 @@
     document.getElementById('expand-changes').addEventListener('click', expandChanges);
     document.getElementById('collapse').addEventListener('click', () => {
         state.expanded.clear();
+        state.focus = null;
         autoExpand();
         render(FIT);
     });
@@ -63,6 +64,7 @@
         }
         state.kinds = new Set(DEFAULT_KINDS[graph.view] || EDGE_KINDS);
         state.expanded = new Set([...state.expanded].filter(id => state.byId.has(id)));
+        state.focus = state.expanded.has(state.focus) ? state.focus : null;
         if (state.expanded.size === 0) {
             autoExpand();
         }
@@ -131,14 +133,17 @@
         }
         if (state.expanded.has(id)) {
             state.expanded.delete(id);
+            state.focus = state.focus && (state.focus === id || contains(id, state.focus)) ? parentOf(id) : state.focus;
         } else {
             state.expanded.add(id);
+            state.focus = id;
         }
         render({anchor: id});
     }
 
     function reveal(id) {
         ancestors(id).forEach(ancestor => state.expanded.add(ancestor));
+        state.focus = parentOf(id);
         render({center: id});
         select(id);
     }
@@ -184,18 +189,19 @@
         }
         for (const [key, edge] of edges) {
             elements.push({group: 'edges', data: {id: key, source: edge.source, target: edge.target, width: Math.min(1 + Math.log2(edge.count), 5)},
-                classes: [edge.kind, edgeChange(edge.changes)].filter(Boolean).join(' ')});
+                classes: [edge.kind, edgeChange(edge.changes), inFocus(edge) ? null : 'background'].filter(Boolean).join(' ')});
         }
         cy.batch(() => {
             cy.elements().remove();
             cy.add(elements);
         });
         const layout = cy.layout({
-            name: 'elk', nodeDimensionsIncludeLabels: true, fit: false, animate: false,
+            name: 'elk', nodeDimensionsIncludeLabels: true, fit: false, animate: false, useElkEdgeGeometry: true, elkEdgeRadius: 6,
             elk: {
                 'algorithm': 'layered',
                 'elk.direction': 'RIGHT',
                 'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
+                'elk.edgeRouting': 'ORTHOGONAL',
                 'elk.layered.spacing.nodeNodeBetweenLayers': 50,
                 'elk.spacing.nodeNode': 20,
                 'elk.padding': '[top=30,left=12,bottom=12,right=12]'
@@ -205,7 +211,13 @@
         layout.run();
         if (state.selected && cy.getElementById(state.selected).nonempty()) {
             cy.getElementById(state.selected).select();
+            cy.getElementById(state.selected).connectedEdges().addClass('highlight');
         }
+    }
+
+    function inFocus(edge) {
+        const focus = state.focus;
+        return !focus || focus === edge.source || focus === edge.target || contains(focus, edge.source) || contains(focus, edge.target);
     }
 
     function keepViewport(keep, before) {
@@ -247,6 +259,7 @@
     function select(id) {
         state.selected = id;
         cy.elements().unselect();
+        cy.edges().removeClass('highlight');
         const section = document.getElementById('details');
         const node = id && state.byId.get(id);
         if (!node) {
@@ -254,6 +267,7 @@
             return;
         }
         cy.getElementById(id).select();
+        cy.getElementById(id).connectedEdges().addClass('highlight');
         section.hidden = false;
         document.getElementById('details-name').textContent = label(node);
         const meta = document.getElementById('details-meta');
@@ -393,7 +407,9 @@
             {selector: 'edge.dependency', style: {'line-style': 'dashed'}},
             {selector: 'edge.added', style: {'line-color': color('--added'), 'target-arrow-color': color('--added'), 'width': 2.5}},
             {selector: 'edge.removed', style: {'line-color': color('--removed'), 'target-arrow-color': color('--removed'), 'line-style': 'dashed', 'width': 2.5}},
-            {selector: 'edge.changed', style: {'line-color': color('--changed'), 'target-arrow-color': color('--changed'), 'width': 2.5}}
+            {selector: 'edge.changed', style: {'line-color': color('--changed'), 'target-arrow-color': color('--changed'), 'width': 2.5}},
+            {selector: 'edge.background', style: {'opacity': 0.3, 'width': 1}},
+            {selector: 'edge.highlight', style: {'opacity': 1, 'z-compound-depth': 'top', 'line-color': color('--link'), 'target-arrow-color': color('--link')}}
         ];
     }
 

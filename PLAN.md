@@ -98,6 +98,8 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
 - **The list of changes** leaves out the edges of an added or removed node; the diff itself keeps them for the viewer.
 - **Edges at any level.** The viewer draws an edge between the nearest visible ancestors of its two ends. This mapping
   is the only graph logic in JS. Everything else is computed in `core` and tested there.
+- **Focus.** The last expanded node is the focus: edges that neither start nor end inside it fade into the background,
+  and the edges of the selected node stand out. ELK routes the edges orthogonally.
 - **Git** goes through JGit in `core`, for the CLI and the plugin alike.
 - **Plugin.** A tool window shows the viewer page in JCEF (the bundled plugin `com.intellij.modules.jcef`) and sends
   it the data of the chosen commits through `archflowLoad`. The page calls back through `archflowOpen(file, line,
