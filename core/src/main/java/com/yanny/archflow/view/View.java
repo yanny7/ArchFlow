@@ -6,13 +6,13 @@ public enum View {
     ALL_FUNCTIONS {
         @Override
         public Model project(Model model, ViewOptions options) {
-            return new MethodProjection(model, options, method -> true).project();
+            return new MethodProjection(model, options, method -> true, true).project();
         }
     },
     OUTLINE {
         @Override
         public Model project(Model model, ViewOptions options) {
-            return new MethodProjection(model, options, method -> method.lines() >= options.minLines()).project();
+            return new MethodProjection(model, options, method -> method.lines() >= options.minLines(), false).project();
         }
     },
     DEPENDENCIES {

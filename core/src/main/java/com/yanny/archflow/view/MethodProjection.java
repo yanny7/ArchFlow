@@ -23,14 +23,16 @@ final class MethodProjection {
     private final Model model;
     private final ViewOptions options;
     private final Predicate<Node> visibleMethod;
+    private final boolean unresolvedShown;
     private final Map<String, Node> nodes = new HashMap<>();
     private final Map<String, List<String>> overriders = new HashMap<>();
     private final Map<String, Set<String>> reached = new HashMap<>();
 
-    MethodProjection(Model model, ViewOptions options, Predicate<Node> visibleMethod) {
+    MethodProjection(Model model, ViewOptions options, Predicate<Node> visibleMethod, boolean unresolvedShown) {
         this.model = model;
         this.options = options;
         this.visibleMethod = visibleMethod;
+        this.unresolvedShown = unresolvedShown;
         model.nodes().forEach(node -> nodes.put(node.id(), node));
         model.edges().stream()
                 .filter(edge -> edge.kind() == EdgeKind.OVERRIDE)
@@ -81,10 +83,8 @@ final class MethodProjection {
             switch (step) {
                 case Step.Call call when call.resolved() -> shown(call.target())
                         .forEach(target -> out.add(new Step.Call(call.line(), target, call.text(), false)));
-                case Step.Call call -> {
-                    if (!call.external() || options.showExternal()) {
-                        out.add(call);
-                    }
+                case Step.Call call when shown(call) -> out.add(call);
+                case Step.Call ignored -> {
                 }
                 case Step.Branch branch -> {
                     List<Step.Arm> arms = branch.arms().stream()
@@ -107,6 +107,10 @@ final class MethodProjection {
             }
         }
         return out;
+    }
+
+    private boolean shown(Step.Call call) {
+        return options.showExternal() || (!call.external() && unresolvedShown);
     }
 
     private Set<String> shown(String target) {

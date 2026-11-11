@@ -15,6 +15,7 @@ class Walker {
         }
         if (state.failed()) {
             state.toString();
+            undeclared.run();
         }
         state.reset();
     }

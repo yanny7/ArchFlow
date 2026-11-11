@@ -28,7 +28,8 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
 - **One extractor for every commit.** The working copy and the history go through the same code. Otherwise a diff
   shows the difference between two extractors, not between two commits.
 - **Unknown is a value, not a failure.** A call whose target cannot be resolved stays in the model as an unresolved
-  call and the view marks it. Extraction of the rest goes on.
+  call and the view marks it. Extraction of the rest goes on. The outline hides unresolved calls together with
+  external ones.
 - **Outside calls are hidden, not lost.** A call into code outside the source set (the JDK, a library) is kept in the
   model as external. Views hide external calls unless their options say to show them.
 - **Same input, same bytes.** A model is serialised in a stable order, so two runs on the same commit give identical

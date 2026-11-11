@@ -10,7 +10,7 @@ class ViewTest {
     private static final ViewOptions OPTIONS = ViewOptions.DEFAULT.withMinLines(8);
 
     @Test
-    void outlineKeepsBigMethodsAndCarriesCallsThroughHiddenMethodsAndInterfaces() {
+    void outlineKeepsBigMethodsCarriesCallsThroughHiddenMethodsAndInterfacesAndHidesUnresolvedCalls() {
         assertEquals("""
                 package app
                   type Calls app/Calls.java:3-9
@@ -22,11 +22,11 @@ class ViewTest {
                           8 call app.State#reset()
                   type State app/State.java:3-30
                     method reset() 19-26
-                  type Walker app/Walker.java:5-29
-                    method walk(State) 12-20
+                  type Walker app/Walker.java:5-30
+                    method walk(State) 12-21
                       13 loop while (state.pending())
                         14 call app.Reads#execute(State)
-                      19 call app.State#reset()
+                      20 call app.State#reset()
                 call app.Reads#execute(State) -> app.State#reset()
                 call app.Walker#walk(State) -> app.Reads#execute(State)
                 call app.Walker#walk(State) -> app.State#reset()
@@ -68,17 +68,20 @@ class ViewTest {
                       23 call app.State#log(int)
                       24 call app.State#log(int)
                       25 call app.State#log(int)
-                  type Walker app/Walker.java:5-29
+                  type Walker app/Walker.java:5-30
                     method <init>(List) 8-10
-                    method step(State) 22-28
-                      23 loop for (Handler handler : handlers)
-                        24 call app.Handler#execute(State)
-                    method walk(State) 12-20
+                    method step(State) 23-29
+                      24 loop for (Handler handler : handlers)
+                        25 call app.Handler#execute(State)
+                    method walk(State) 12-21
                       13 loop while (state.pending())
                         13 call app.State#pending()
                         14 call app.Walker#step(State)
                       16 call app.State#failed()
-                      19 call app.State#reset()
+                      16 if
+                        state.failed()
+                          18 call ? undeclared.run()
+                      20 call app.State#reset()
                 call app.Calls#execute(State) -> app.State#push(int)
                 call app.Reads#execute(State) -> app.State#pending()
                 call app.Reads#execute(State) -> app.State#push(int)
@@ -134,12 +137,12 @@ class ViewTest {
                       23 call app.State#log(int)
                       24 call app.State#log(int)
                       25 call app.State#log(int)
-                  type Walker app/Walker.java:5-29
+                  type Walker app/Walker.java:5-30
                     method <init>(List) 8-10
-                    method step(State) 22-28
-                      23 loop for (Handler handler : handlers)
-                        24 call app.Handler#execute(State)
-                    method walk(State) 12-20
+                    method step(State) 23-29
+                      24 loop for (Handler handler : handlers)
+                        25 call app.Handler#execute(State)
+                    method walk(State) 12-21
                       13 loop while (state.pending())
                         13 call app.State#pending()
                         14 call app.Walker#step(State)
@@ -147,7 +150,8 @@ class ViewTest {
                       16 if
                         state.failed()
                           17 call external state.toString()
-                      19 call app.State#reset()
+                          18 call ? undeclared.run()
+                      20 call app.State#reset()
                 call app.Calls#execute(State) -> app.State#push(int)
                 call app.Reads#execute(State) -> app.State#pending()
                 call app.Reads#execute(State) -> app.State#push(int)
@@ -178,7 +182,7 @@ class ViewTest {
                   type Handler app/Handler.java:3-5
                   type Reads app/Reads.java:3-13
                   type State app/State.java:3-30
-                  type Walker app/Walker.java:5-29
+                  type Walker app/Walker.java:5-30
                 dependency app.Calls -> app.Handler
                 dependency app.Calls -> app.State
                 dependency app.Handler -> app.State
