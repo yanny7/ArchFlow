@@ -336,7 +336,7 @@ final class FlowExtractor {
     }
 
     private static Receiver typed(String name) {
-        return new Receiver.Typed(new TypeRef(name, List.of(), 0));
+        return new Receiver.Typed(new TypeRef(name, List.of(), 0, 0));
     }
 
     private void declare(Parameter param) {

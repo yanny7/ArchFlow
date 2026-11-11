@@ -13,13 +13,14 @@
     const TRAIL_LENGTH = 100;
     const METHOD_RADIUS = 12;
     const TAP_DISTANCE = 4;
+    const MENU_PLACES = 10;
     const CHART_LABEL = 70;
     const CHART_ROW = 60;
     const CHART_ZOOM = {min: 0.7, max: 1.5};
 
     cytoscape.use(cytoscapeElk);
 
-    const state = {data: null, graph: null, byId: new Map(), children: new Map(), expanded: new Set(), kinds: new Set(), selected: null, partner: null, focus: null};
+    const state = {data: null, graph: null, byId: new Map(), children: new Map(), expanded: new Set(), kinds: new Set(), selected: null, partner: null, change: false, focus: null};
     const measure = document.createElement('canvas').getContext('2d');
     const cy = cytoscape({container: document.getElementById('graph'), style: styles(), autoungrabify: true, autounselectify: true});
     const chart = {cy: null, id: null};
@@ -27,13 +28,33 @@
     const trail = {entries: [], index: -1};
 
     const graphDrag = panOnDrag(cy);
-    cy.on('tap', 'node', event => {
+    cy.on('tap', 'node, edge', event => {
         if (graphDrag.moved()) {
             return;
         }
-        record(event.target.id(), null);
-        select(event.target.id(), null);
+        pick(event.target);
+        const original = event.originalEvent;
+        if (original && (original.ctrlKey || original.metaKey)) {
+            openSource();
+        }
     });
+    cy.on('tap', event => {
+        if (event.target === cy) {
+            closeMenu();
+        }
+    });
+    cy.on('cxttap', 'node, edge', event => {
+        pick(event.target);
+        openMenu(event.target, event.renderedPosition);
+    });
+    cy.on('viewport', closeMenu);
+    document.getElementById('stage').addEventListener('contextmenu', event => event.preventDefault());
+    document.addEventListener('mousedown', event => {
+        if (!document.getElementById('menu').contains(event.target)) {
+            closeMenu();
+        }
+    });
+    document.getElementById('source').addEventListener('click', openSource);
     cy.on('dbltap', 'node', event => {
         const id = event.target.id();
         if (state.children.has(id)) {
@@ -49,6 +70,7 @@
     document.addEventListener('keydown', event => {
         const key = event.key.toLowerCase();
         if (event.key === 'Escape') {
+            closeMenu();
             closeChart();
         } else if ((event.ctrlKey || event.metaKey) && (key === 'z' || key === 'y')) {
             event.preventDefault();
@@ -115,7 +137,7 @@
         renderKinds();
         renderChanges();
         render(FIT);
-        select(state.byId.has(state.selected) ? state.selected : null, state.byId.has(state.partner) ? state.partner : null);
+        select(state.byId.has(state.selected) ? state.selected : null, state.byId.has(state.partner) ? state.partner : null, state.change);
         const charted = chart.id && state.byId.get(chart.id);
         if (charted && charted.chart) {
             openChart(chart.id);
@@ -195,7 +217,7 @@
         let start = null;
         let last = null;
         let moved = false;
-        view.on('tapstart', 'node', event => {
+        view.on('tapstart', 'node, edge', event => {
             start = {...event.renderedPosition};
             last = start;
             moved = false;
@@ -214,32 +236,129 @@
         return {moved: () => moved};
     }
 
-    function go(id, partner) {
-        record(id, partner);
-        reveal(id, partner);
+    function pick(element) {
+        const id = element.isEdge() ? element.source().id() : element.id();
+        const partner = element.isEdge() ? element.target().id() : null;
+        record(id, partner, false);
+        select(id, partner, false);
     }
 
-    function reveal(id, partner) {
+    function pickedEdges() {
+        return state.graph.edges.filter(edge => (state.kinds.has(edge.kind) || isPicked(edge))
+            && representative(edge.from) === state.selected && representative(edge.to) === state.partner);
+    }
+
+    function places() {
+        if (state.partner) {
+            const seen = new Set();
+            return pickedEdges()
+                .flatMap(edge => (edge.sites || []).map(site => ({...site, commit: commitOfEdge(edge)})))
+                .filter(place => !seen.has(place.file + ':' + place.line) && seen.add(place.file + ':' + place.line));
+        }
+        const node = state.byId.get(state.selected);
+        return node && node.file ? [{file: node.file, line: node.line, text: node.kind, commit: commitOf(node.id)}] : [];
+    }
+
+    function canOpen() {
+        return typeof window.archflowOpen === 'function';
+    }
+
+    function openSource() {
+        const found = places();
+        if (canOpen() && found.length === 1) {
+            open(found[0]);
+        }
+    }
+
+    function open(place) {
+        window.archflowOpen(place.file, place.line, place.commit);
+    }
+
+    function renderSource() {
+        const button = document.getElementById('source');
+        const count = places().length;
+        button.hidden = !canOpen();
+        button.disabled = count !== 1;
+        button.title = count > 1 ? 'Several places, pick one in the details or by right click' : 'Open in the editor (Ctrl+click)';
+    }
+
+    function openMenu(element, position) {
+        const menu = document.getElementById('menu');
+        const items = [];
+        if (element.isNode()) {
+            const node = state.byId.get(element.id());
+            items.push(menuItem('Open source', openSource, canOpen() && Boolean(node.file)));
+            if (node.chart) {
+                items.push(menuItem('Flowchart', () => openChart(node.id), true));
+            }
+            if (state.children.has(node.id)) {
+                items.push(menuItem(state.expanded.has(node.id) ? 'Collapse' : 'Expand', () => toggle(node.id), true));
+            }
+        } else {
+            const found = places();
+            found.slice(0, MENU_PLACES).forEach(place => items.push(menuItem(fileName(place.file) + ':' + place.line + '  ' + short(place.text),
+                () => open(place), canOpen())));
+            if (found.length > MENU_PLACES) {
+                items.push(menuItem('… ' + (found.length - MENU_PLACES) + ' more in the details', null, false));
+            }
+        }
+        if (items.length === 0) {
+            return;
+        }
+        menu.replaceChildren(...items);
+        menu.hidden = false;
+        const stage = document.getElementById('stage');
+        menu.style.left = Math.min(position.x, stage.clientWidth - menu.offsetWidth - PADDING) + 'px';
+        menu.style.top = Math.min(position.y, stage.clientHeight - menu.offsetHeight - PADDING) + 'px';
+    }
+
+    function menuItem(text, action, enabled) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = text;
+        button.disabled = !enabled;
+        button.addEventListener('click', () => {
+            closeMenu();
+            action();
+        });
+        return button;
+    }
+
+    function fileName(file) {
+        return file.substring(file.lastIndexOf('/') + 1);
+    }
+
+    function closeMenu() {
+        document.getElementById('menu').hidden = true;
+    }
+
+    function go(id, partner, change) {
+        record(id, partner, change);
+        reveal(id, partner, change);
+    }
+
+    function reveal(id, partner, change) {
         const ends = [id, partner].filter(Boolean);
         ends.forEach(end => ancestors(end).forEach(ancestor => state.expanded.add(ancestor)));
         state.focus = parentOf(id);
         state.selected = id;
         state.partner = partner;
+        state.change = change;
         render({center: ends});
-        select(id, partner);
+        select(id, partner, change);
     }
 
     function isPicked(edge) {
-        return state.partner !== null && edge.from === state.selected && edge.to === state.partner;
+        return state.change && state.partner !== null && edge.from === state.selected && edge.to === state.partner;
     }
 
-    function record(id, partner) {
+    function record(id, partner, change) {
         const current = trail.entries[trail.index];
-        if (current && current.id === id && current.partner === partner) {
+        if (current && current.id === id && current.partner === partner && current.change === change) {
             return;
         }
         trail.entries.splice(trail.index + 1);
-        trail.entries.push({id, partner});
+        trail.entries.push({id, partner, change});
         if (trail.entries.length > TRAIL_LENGTH) {
             trail.entries.shift();
         }
@@ -255,7 +374,7 @@
         trail.index += delta;
         renderTrail();
         if (state.byId.has(entry.id)) {
-            reveal(entry.id, state.byId.has(entry.partner) ? entry.partner : null);
+            reveal(entry.id, state.byId.has(entry.partner) ? entry.partner : null, entry.change);
         }
     }
 
@@ -415,13 +534,15 @@
         return node.name;
     }
 
-    function select(id, partner) {
+    function select(id, partner, change) {
         state.selected = id;
         state.partner = partner;
+        state.change = change;
         cy.edges().filter(edge => !state.kinds.has(edge.data('kind')) && !isPicked({from: edge.source().id(), to: edge.target().id()})).remove();
         cy.elements().removeClass('chosen');
         cy.edges().removeClass('highlight');
         highlightSelected();
+        renderSource();
         const section = document.getElementById('details');
         const node = id && state.byId.get(id);
         if (!node) {
@@ -429,6 +550,10 @@
             return;
         }
         section.hidden = false;
+        if (partner) {
+            renderEdgeDetails();
+            return;
+        }
         document.getElementById('details-chart').hidden = !node.chart;
         document.getElementById('details-name').textContent = label(node);
         const meta = document.getElementById('details-meta');
@@ -442,11 +567,34 @@
         }
         if (node.file) {
             const place = document.createElement('div');
-            place.append(sourceLink(node.file, node.line, node.file + ':' + node.line));
+            place.append(sourceLink(node.file, node.line, node.file + ':' + node.line, commitOf(node.id)));
             meta.append(place);
         }
         const flow = document.getElementById('details-flow');
         flow.replaceChildren(...(node.flow || []).map(line => flowLine(node, line)));
+    }
+
+    function renderEdgeDetails() {
+        document.getElementById('details-chart').hidden = true;
+        document.getElementById('details-name').textContent = label(state.byId.get(state.selected)) + ' → ' + label(state.byId.get(state.partner));
+        const edges = pickedEdges();
+        document.getElementById('details-meta').replaceChildren(edges.length + (edges.length === 1 ? ' edge' : ' edges'));
+        const items = [];
+        for (const edge of edges) {
+            const header = document.createElement('li');
+            header.className = ['edge', edge.change].filter(Boolean).join(' ');
+            header.textContent = edge.kind + ' ' + short(edge.from) + ' → ' + short(edge.to);
+            items.push(header);
+            for (const site of edge.sites || []) {
+                const item = document.createElement('li');
+                const number = document.createElement('span');
+                number.className = 'line';
+                number.append(sourceLink(site.file, site.line, String(site.line), commitOfEdge(edge)));
+                item.append(number, '  ' + short(site.text));
+                items.push(item);
+            }
+        }
+        document.getElementById('details-flow').replaceChildren(...items);
     }
 
     function flowLine(node, line) {
@@ -454,14 +602,14 @@
         const number = document.createElement('span');
         number.className = 'line';
         if (line.line > 0) {
-            number.append(sourceLink(node.file, line.line, String(line.line)));
+            number.append(sourceLink(node.file, line.line, String(line.line), commitOf(node.id)));
         }
         item.append(number, '  '.repeat(line.depth));
         const target = line.text.startsWith('call ') ? line.text.substring(5) : null;
         if (target && state.byId.has(target)) {
             const link = document.createElement('a');
             link.textContent = short(line.text);
-            link.addEventListener('click', () => go(target, null));
+            link.addEventListener('click', () => go(target, null, false));
             item.append(link);
         } else {
             item.append(short(line.text));
@@ -469,14 +617,19 @@
         return item;
     }
 
-    function sourceLink(file, line, text) {
-        if (typeof window.archflowOpen !== 'function' || !file) {
+    function sourceLink(file, line, text, commit) {
+        if (!canOpen() || !file) {
             return document.createTextNode(text);
         }
         const link = document.createElement('a');
         link.textContent = text;
-        link.addEventListener('click', () => window.archflowOpen(file, line, commitOf(state.selected)));
+        link.addEventListener('click', () => open({file, line, commit}));
         return link;
+    }
+
+    function commitOfEdge(edge) {
+        const commit = edge.change === 'removed' ? state.data.beforeCommit : state.data.commit;
+        return commit || null;
     }
 
     function commitOf(id) {
@@ -502,7 +655,7 @@
                     return;
                 }
                 closeChart();
-                go(event.target.data('target'), null);
+                go(event.target.data('target'), null, false);
             });
         }
         chart.cy.resize();
@@ -589,7 +742,7 @@
             const item = document.createElement('li');
             item.className = change.change;
             item.textContent = short(change.text);
-            item.addEventListener('click', () => go(change.target, change.to || null));
+            item.addEventListener('click', () => go(change.target, change.to || null, Boolean(change.to)));
             return item;
         }));
         document.getElementById('changes-count').textContent = '(' + state.graph.changes.length + ')';

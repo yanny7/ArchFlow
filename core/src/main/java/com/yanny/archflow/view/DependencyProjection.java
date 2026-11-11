@@ -14,6 +14,7 @@ final class DependencyProjection {
         return new Model(
                 model.nodes().stream().filter(node -> node.kind() != NodeKind.METHOD).toList(),
                 model.edges().stream().filter(edge -> edge.kind() == EdgeKind.DEPENDENCY).toList(),
-                Map.of());
+                Map.of(),
+                model.sites());
     }
 }

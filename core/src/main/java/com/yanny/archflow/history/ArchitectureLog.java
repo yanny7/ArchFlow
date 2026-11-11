@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 public final class ArchitectureLog {
-    private static final Model EMPTY = new Model(List.of(), List.of(), Map.of());
+    private static final Model EMPTY = new Model(List.of(), List.of(), Map.of(), List.of());
 
     private final GitRepo git;
     private final ModelSource source;

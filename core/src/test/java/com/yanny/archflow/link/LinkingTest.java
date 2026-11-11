@@ -2,6 +2,8 @@ package com.yanny.archflow.link;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.stream.Collectors;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class LinkingTest {
@@ -128,5 +130,40 @@ class LinkingTest {
                 override core.handlers.Echo#handle(Context) -> core.Handler#handle(Context)
                 override core.handlers.Echo#handle(Context,int) -> core.Handler#handle(Context,int)
                 override core.handlers.Echo#visit(Context) -> core.Visitor#visit(T)""", Fixtures.dump("linking"));
+    }
+
+    @Test
+    void dependenciesRememberWhereTheyComeFromAndTheImportThatBroughtTheType() {
+        assertEquals("""
+                core.Base app/Walker.java:8 supertype Base
+                core.Base app/Walker.java:18 call super()
+                core.Base app/Walker.java:33 call log()
+                core.Context app/Walker.java:9 field VISITORS
+                core.Context app/Walker.java:11 call Context.create()
+                core.Context app/Walker.java:11 field own
+                core.Context app/Walker.java:18 call Context.create()
+                core.Context app/Walker.java:29 call context.first()
+                core.Context app/Walker.java:34 call core.Context.create()
+                core.Context.Entry app/Walker.java:31 call new Context.Entry()
+                core.Context.Registry app/Walker.java:30 call context.registry.register()
+                core.Context.Registry app/Walker.java:31 call context.registry.register()
+                core.Context.Registry app/Walker.java:32 call context.registry::register
+                core.Handler app/Walker.java:10 field extra
+                core.Handler app/Walker.java:21 parameter handlers of walk(List)
+                core.Handler app/Walker.java:23 call handler.handle()
+                core.Handler app/Walker.java:26 call handler.handle()
+                core.Handler app/Walker.java:28 call extra[].handle()
+                core.Handler app/Walker.java:29 call context.first().handle()
+                core.Visitor app/Walker.java:9 field VISITORS
+                core.handlers.Echo app/Walker.java:4 import core.handlers.Echo
+                core.handlers.Echo app/Walker.java:9 call new Echo()
+                core.handlers.Echo app/Walker.java:30 call new Echo()
+                core.handlers.Echo app/Walker.java:31 call new Echo()
+                util.Strings app/Walker.java:6 import util.Strings.trim
+                util.Strings app/Walker.java:14 call trim()
+                util.Strings app/Walker.java:33 call trim()""", Fixtures.model("linking").sites().stream()
+                .filter(site -> site.edge().from().equals("app.Walker"))
+                .map(site -> site.edge().to() + " " + site.file() + ":" + site.line() + " " + site.text())
+                .collect(Collectors.joining("\n")));
     }
 }

@@ -56,7 +56,7 @@ final class MethodProjection {
                 edges.add(edge);
             }
         }
-        return new Model(kept, edges, flows);
+        return new Model(kept, edges, flows, model.sites());
     }
 
     private Node reparent(Node node) {

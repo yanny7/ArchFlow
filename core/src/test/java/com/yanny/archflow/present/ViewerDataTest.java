@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class ViewerDataTest {
     @Test
-    void graphOfDiffHoldsRemovedNodesAndEdgesWithTheirChanges() {
+    void graphOfDiffHoldsRemovedNodesAndEdgesWithTheirChangesAndPlaces() {
         ViewerData.Graph graph = ViewerData.graph(View.ALL_FUNCTIONS, Fixtures.model("diff-before"), Fixtures.model("diff-after"));
 
         assertEquals("""
@@ -33,10 +33,16 @@ class ViewerDataTest {
                 method b.Util#log(int) in b.Util
                 type a.Old in a [removed]
                 call a.Walker#<instance-init>() -> a.Context [added]
+                  at a/Walker.java:4 call new Context()
                 call a.Walker#step(long) -> b.Util#log(int)
+                  at a/Walker.java:20 call b.Util.log()
                 call a.Walker#walk(int) -> a.Walker#step(long)
+                  at a/Walker.java:8 call step()
                 dependency a.Walker -> a.Context [added]
+                  at a/Walker.java:4 call new Context()
+                  at a/Walker.java:4 field context
                 dependency a.Walker -> b.Util
+                  at a/Walker.java:20 call b.Util.log()
                 change a.Context: + type a.Context
                 change a.Old: - type a.Old
                 change a.Walker#<instance-init>(): + method a.Walker#<instance-init>()
@@ -56,6 +62,7 @@ class ViewerDataTest {
         }
         for (ViewerData.GraphEdge edge : graph.edges()) {
             lines.add(edge.kind() + " " + edge.from() + " -> " + edge.to() + (edge.change() == null ? "" : " [" + edge.change() + "]"));
+            edge.sites().forEach(site -> lines.add("  at " + site.file() + ":" + site.line() + " " + site.text()));
         }
         graph.changes().forEach(change -> lines.add("change " + change.target() + (change.to() == null ? "" : " to " + change.to())
                 + ": " + change.text()));

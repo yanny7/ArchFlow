@@ -103,6 +103,10 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   and the edges of the selected node stand out. ELK routes the edges orthogonally.
 - **Navigation.** Nodes cannot be dragged; a drag anywhere pans, so the layout stays the one ELK made. A change of an
   edge selects both its ends and the edge between them. Selections form a trail with undo and redo.
+- **Source.** Every edge carries the places in the code it comes from: the line of a call, the declaration of an
+  override, and for a dependency the supertype, field, parameter, return type, call or import that makes it (the model
+  keeps these as sites). Ctrl+click on a node or an edge with one place opens it; a click on an edge lists its places
+  in the details; a right click offers the places and the actions of a node.
 - **Flowchart.** A method opens as a control flow chart over the graph (double click on a method without children, or
   the button in its details). `core` builds it from the flow of the view (`FlowChart`): a box per call, branch, arm,
   loop, return and throw; an `if` without `else` falls through. A click on a call returns to the graph at its target.

@@ -71,7 +71,7 @@ final class MethodPairing {
                 .toList();
         Map<String, List<Step>> flows = new HashMap<>();
         model.flows().forEach((method, steps) -> flows.put(id(method, renamed), steps(steps, renamed)));
-        return new Model(nodes, edges, flows);
+        return new Model(nodes, edges, flows, model.sites());
     }
 
     private static List<Step> steps(List<Step> steps, Map<String, String> renamed) {

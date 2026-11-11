@@ -26,7 +26,8 @@ class ModelTest {
         Edge call = new Edge(EdgeKind.CALL, walk.id(), handle.id());
         Edge dependency = new Edge(EdgeKind.DEPENDENCY, walker.id(), handler.id());
 
-        Model model = new Model(List.of(walk, handle, walker, handler, pkg), List.of(dependency, call, dependency), Map.of(walk.id(), flow));
+        Model model = new Model(List.of(walk, handle, walker, handler, pkg), List.of(dependency, call, dependency), Map.of(walk.id(), flow),
+                List.of());
 
         assertEquals("""
                 package a

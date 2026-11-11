@@ -34,7 +34,10 @@ public final class ViewerData {
                             String change, String previousId, List<FlowText.Line> flow, FlowChart chart) {
     }
 
-    public record GraphEdge(String kind, String from, String to, String change) {
+    public record GraphEdge(String kind, String from, String to, String change, List<GraphSite> sites) {
+    }
+
+    public record GraphSite(String file, int line, String text) {
     }
 
     public record ChangeEntry(String target, String to, String change, String text) {
@@ -72,11 +75,13 @@ public final class ViewerData {
                 .filter(change -> change.change() == Change.REMOVED)
                 .forEach(change -> nodes.add(node(change.node(), before, change)));
         List<GraphEdge> edges = new ArrayList<>();
-        after.edges().forEach(edge -> edges.add(edge(edge, edgeChanges.get(edge))));
+        Places afterPlaces = new Places(after);
+        after.edges().forEach(edge -> edges.add(edge(edge, edgeChanges.get(edge), afterPlaces)));
+        Places beforePlaces = before == null ? null : new Places(before);
         diff.edges().stream()
                 .filter(change -> change.change() == Change.REMOVED)
                 .map(EdgeChange::edge)
-                .forEach(edge -> edges.add(edge(edge, Change.REMOVED)));
+                .forEach(edge -> edges.add(edge(edge, Change.REMOVED, beforePlaces)));
         List<ChangeEntry> changes = DiffText.entries(diff, false).stream()
                 .map(entry -> new ChangeEntry(entry.target(), entry.to(), name(entry.change()), entry.line()))
                 .toList();
@@ -95,8 +100,48 @@ public final class ViewerData {
         return flow.isEmpty() ? null : FlowChart.of(flow);
     }
 
-    private static GraphEdge edge(Edge edge, Change change) {
-        return new GraphEdge(name(edge.kind()), edge.from(), edge.to(), change == null ? null : name(change));
+    private static GraphEdge edge(Edge edge, Change change, Places places) {
+        return new GraphEdge(name(edge.kind()), edge.from(), edge.to(), change == null ? null : name(change), places.of(edge));
+    }
+
+    private static final class Places {
+        private final Model model;
+        private final Map<String, Node> nodes = new HashMap<>();
+        private final Map<Edge, List<GraphSite>> dependencies = new HashMap<>();
+
+        Places(Model model) {
+            this.model = model;
+            model.nodes().forEach(node -> nodes.put(node.id(), node));
+            model.sites().forEach(site -> dependencies.computeIfAbsent(site.edge(), edge -> new ArrayList<>())
+                    .add(new GraphSite(site.file(), site.line(), site.text())));
+        }
+
+        List<GraphSite> of(Edge edge) {
+            Node from = nodes.get(edge.from());
+            String file = from == null || from.location() == null ? null : from.location().file();
+            return switch (edge.kind()) {
+                case DEPENDENCY -> dependencies.getOrDefault(edge, List.of());
+                case OVERRIDE -> file == null ? List.of() : List.of(new GraphSite(file, from.location().line(), "declaration"));
+                case CALL -> {
+                    List<GraphSite> sites = new ArrayList<>();
+                    calls(model.flow(edge.from()), edge.to(), file, sites);
+                    yield sites;
+                }
+            };
+        }
+
+        private static void calls(List<Step> steps, String target, String file, List<GraphSite> sites) {
+            for (Step step : steps) {
+                switch (step) {
+                    case Step.Call call when target.equals(call.target()) ->
+                            sites.add(new GraphSite(file, call.line(), "call " + call.text()));
+                    case Step.Branch branch -> branch.arms().forEach(arm -> calls(arm.steps(), target, file, sites));
+                    case Step.Loop loop -> calls(loop.steps(), target, file, sites);
+                    default -> {
+                    }
+                }
+            }
+        }
     }
 
     private static String name(Enum<?> value) {

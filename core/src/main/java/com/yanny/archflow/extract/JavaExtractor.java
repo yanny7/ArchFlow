@@ -49,7 +49,7 @@ public final class JavaExtractor {
         CompilationUnit unit = result.getResult().get();
         String packageName = unit.getPackageDeclaration().map(PackageDeclaration::getNameAsString).orElse("");
         List<Import> imports = unit.getImports().stream()
-                .map(i -> new Import(i.getNameAsString(), i.isStatic(), i.isAsterisk()))
+                .map(i -> new Import(i.getNameAsString(), i.isStatic(), i.isAsterisk(), line(i)))
                 .toList();
         List<TypeFacts> types = unit.getTypes().stream().map(t -> type(file, t)).toList();
         return new FileFacts(file, packageName, imports, types, null);
@@ -135,14 +135,18 @@ public final class JavaExtractor {
     static TypeRef ref(Type type) {
         return switch (type) {
             case ClassOrInterfaceType named -> new TypeRef(named.getNameWithScope(),
-                    named.getTypeArguments().map(args -> args.stream().map(JavaExtractor::ref).toList()).orElse(List.of()), 0);
+                    named.getTypeArguments().map(args -> args.stream().map(JavaExtractor::ref).toList()).orElse(List.of()), 0, line(named));
             case ArrayType array -> ref(array.getComponentType()).withDims(1);
             case WildcardType wildcard -> wildcard.getExtendedType().map(JavaExtractor::ref)
-                    .orElseGet(() -> new TypeRef("?", List.of(), 0));
+                    .orElseGet(() -> new TypeRef("?", List.of(), 0, line(wildcard)));
             case UnionType union -> ref(union.getElements().get(0));
             case IntersectionType intersection -> ref(intersection.getElements().get(0));
-            default -> new TypeRef(type.asString(), List.of(), 0);
+            default -> new TypeRef(type.asString(), List.of(), 0, line(type));
         };
+    }
+
+    private static int line(Node node) {
+        return node.getRange().map(range -> range.begin.line).orElse(0);
     }
 
     static Location location(String file, Node node) {

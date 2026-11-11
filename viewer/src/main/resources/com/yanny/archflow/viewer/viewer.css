@@ -100,6 +100,11 @@ a:hover { text-decoration: underline; }
 .floating { position: absolute; right: 12px; padding: 6px 10px; background: var(--panel); border: 1px solid var(--border);
   border-radius: 6px; font-size: 12px; }
 #navigation { top: 12px; z-index: 1; display: flex; gap: 6px; }
+#menu { right: auto; z-index: 1; padding: 4px 0; min-width: 160px; max-width: 480px; }
+#menu button { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: transparent;
+  padding: 3px 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#menu button:not(:disabled):hover { background: var(--bg); }
+#details-flow li.edge { margin-top: 6px; font-weight: bold; }
 #legend { bottom: 12px; z-index: 3; max-height: calc(100% - 24px); overflow: auto; }
 #legend summary { cursor: pointer; font-weight: bold; }
 #legend h3 { font-size: 12px; margin: 8px 0 4px; }
