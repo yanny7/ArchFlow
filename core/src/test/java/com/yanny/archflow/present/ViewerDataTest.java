@@ -53,6 +53,17 @@ class ViewerDataTest {
                 change a.Walker to a.Context: + dependency a.Walker -> a.Context""", String.join("\n", lines(graph)));
     }
 
+    @Test
+    void fileIsATestWhenItsSourceSetNameHoldsTest() {
+        assertEquals(List.of(true, true, true, false, false, false), List.of(
+                ViewerData.isTest("ali/common/src/test/java/a/A.java"),
+                ViewerData.isTest("ali/fabric/src/gametest/java/a/A.java"),
+                ViewerData.isTest("src/testFixtures/java/a/A.java"),
+                ViewerData.isTest("src/main/java/test/A.java"),
+                ViewerData.isTest("a/test/A.java"),
+                ViewerData.isTest("src/Test.java")));
+    }
+
     private static List<String> lines(ViewerData.Graph graph) {
         List<String> lines = new ArrayList<>();
         for (ViewerData.GraphNode node : graph.nodes()) {

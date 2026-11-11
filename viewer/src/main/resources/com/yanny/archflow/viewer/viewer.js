@@ -27,7 +27,7 @@
     const elkWorker = startElkWorker();
     let layouts = 0;
 
-    const state = {data: null, graph: null, byId: new Map(), children: new Map(), expanded: new Set(), kinds: new Set(), selected: null, partner: null, change: false, focus: null, lens: 'all', shown: null};
+    const state = {data: null, graph: null, byId: new Map(), children: new Map(), expanded: new Set(), kinds: new Set(), selected: null, partner: null, change: false, focus: null, lens: 'all', shown: null, tests: false, hidden: new Set(), calm: new Set()};
     const measure = document.createElement('canvas').getContext('2d');
     const cy = cytoscape({container: document.getElementById('graph'), style: styles(), autoungrabify: true, autounselectify: true});
     cheapStyleCache();
@@ -94,6 +94,15 @@
         action();
     });
     document.getElementById('lens').addEventListener('change', event => setLens(event.target.value));
+    document.getElementById('tests').addEventListener('change', event => {
+        state.tests = event.target.checked;
+        hideTests();
+        renderChanges();
+        renderLens();
+        applyLens(true);
+        render();
+        select(available(state.selected) ? state.selected : null, available(state.partner) ? state.partner : null, state.change);
+    });
     document.getElementById('collapse').addEventListener('click', () => {
         state.expanded.clear();
         state.focus = null;
@@ -174,6 +183,7 @@
             }
         }
         state.kinds = new Set(DEFAULT_KINDS[graph.view] || EDGE_KINDS);
+        hideTests();
         state.expanded = new Set([...state.expanded].filter(id => state.byId.has(id)));
         state.focus = state.expanded.has(state.focus) ? state.focus : null;
         if (state.expanded.size === 0) {
@@ -229,11 +239,50 @@
     }
 
     function autoExpand() {
-        let level = state.graph.nodes.filter(node => !parentOf(node.id)).map(node => node.id);
+        let level = state.graph.nodes.filter(node => !parentOf(node.id) && available(node.id)).map(node => node.id);
         while (level.length === 1 && state.children.has(level[0])) {
             state.expanded.add(level[0]);
-            level = state.children.get(level[0]);
+            level = state.children.get(level[0]).filter(available);
         }
+    }
+
+    function hideTests() {
+        state.hidden = new Set();
+        state.calm = new Set();
+        if (state.tests) {
+            return;
+        }
+        const visit = id => {
+            const children = (state.children.get(id) || []).map(visit);
+            const hidden = state.byId.get(id).test || (children.length > 0 && children.every(Boolean));
+            if (hidden) {
+                state.hidden.add(id);
+            }
+            return hidden;
+        };
+        state.graph.nodes.filter(node => !parentOf(node.id)).forEach(node => visit(node.id));
+        const reasons = new Set();
+        state.graph.nodes.filter(node => node.change && node.change !== 'inside' && available(node.id))
+            .forEach(node => ancestors(node.id).forEach(ancestor => reasons.add(ancestor)));
+        state.graph.edges.filter(edge => edge.change && availableEdge(edge))
+            .forEach(edge => [edge.from, ...ancestors(edge.from)].forEach(id => reasons.add(id)));
+        state.graph.nodes.filter(node => node.change === 'inside' && !reasons.has(node.id)).forEach(node => state.calm.add(node.id));
+    }
+
+    function available(id) {
+        return !state.hidden.has(id);
+    }
+
+    function availableEdge(edge) {
+        return available(edge.from) && available(edge.to);
+    }
+
+    function changeOf(node) {
+        return state.calm.has(node.id) ? null : node.change;
+    }
+
+    function changes() {
+        return state.graph.changes.filter(change => available(change.target) && (!change.to || available(change.to)));
     }
 
     function commonPackage() {
@@ -313,7 +362,7 @@
     function renderLens() {
         const picker = document.getElementById('lens');
         const review = picker.querySelector('option[value="review"]');
-        review.disabled = state.graph.changes.length === 0;
+        review.disabled = changes().length === 0;
         if (review.disabled && state.lens === 'review') {
             state.lens = 'all';
         }
@@ -343,8 +392,8 @@
     function lensNodes() {
         const core = new Set();
         if (state.lens === 'review') {
-            state.graph.nodes.filter(node => node.change && node.change !== 'inside').forEach(node => core.add(node.id));
-            state.graph.edges.filter(edge => edge.change && state.kinds.has(edge.kind)).forEach(edge => {
+            state.graph.nodes.filter(node => node.change && node.change !== 'inside' && available(node.id)).forEach(node => core.add(node.id));
+            state.graph.edges.filter(edge => edge.change && state.kinds.has(edge.kind) && availableEdge(edge)).forEach(edge => {
                 core.add(edge.from);
                 core.add(edge.to);
             });
@@ -354,8 +403,8 @@
             return null;
         }
         const inCore = id => core.has(id) || ancestors(id).some(ancestor => core.has(ancestor));
-        const shown = new Set(state.graph.nodes.filter(node => inCore(node.id)).map(node => node.id));
-        for (const edge of state.graph.edges) {
+        const shown = new Set(state.graph.nodes.filter(node => available(node.id) && inCore(node.id)).map(node => node.id));
+        for (const edge of state.graph.edges.filter(availableEdge)) {
             if (state.kinds.has(edge.kind) && inCore(edge.from)) {
                 shown.add(edge.to);
             }
@@ -368,7 +417,7 @@
     }
 
     function isShown(id) {
-        return !state.shown || state.shown.has(id);
+        return available(id) && (!state.shown || state.shown.has(id));
     }
 
     function warn(text, action) {
@@ -477,18 +526,18 @@
 
     function locate(file, line, exact) {
         if (exact) {
-            const edges = state.graph.edges.filter(edge => (edge.sites || [])
+            const edges = state.graph.edges.filter(availableEdge).filter(edge => (edge.sites || [])
                 .some(site => site.file === file && site.line === line && !DECLARING_SITES.has(site.kind)));
             const edge = edges.find(candidate => state.kinds.has(candidate.kind)) || edges[0];
             if (edge) {
                 return {id: edge.from, partner: edge.to, forced: !state.kinds.has(edge.kind), note: null};
             }
-            const node = innermost(state.graph.nodes, file, line);
+            const node = innermost(state.graph.nodes.filter(candidate => available(candidate.id)), file, line);
             if (node) {
                 return {id: node.id, partner: null, forced: false, note: elsewhere(file, line, node)};
             }
         }
-        const type = state.graph.nodes.find(node => node.kind === 'type' && node.file === file);
+        const type = state.graph.nodes.find(node => node.kind === 'type' && node.file === file && available(node.id));
         const note = exact ? null : 'The file in the editor differs from the shown commit, so only its type is selected.';
         return type ? {id: type.id, partner: null, forced: false, note} : null;
     }
@@ -571,11 +620,11 @@
     function expandChanges(confirmed) {
         const opened = new Set(state.expanded);
         for (const node of state.graph.nodes) {
-            if (node.change && node.change !== 'inside') {
+            if (node.change && node.change !== 'inside' && available(node.id)) {
                 ancestors(node.id).forEach(ancestor => opened.add(ancestor));
             }
         }
-        const visible = state.graph.nodes.filter(node => ancestors(node.id).every(ancestor => opened.has(ancestor))).length;
+        const visible = state.graph.nodes.filter(node => available(node.id) && ancestors(node.id).every(ancestor => opened.has(ancestor))).length;
         if (visible > OPEN_LIMIT && confirmed !== true) {
             warn('Opening all changes shows ' + visible + ' nodes, the layout may take a while.', () => expandChanges(true));
             return;
@@ -679,7 +728,7 @@
             if (isShown(node.id) && isVisible(node.id)) {
                 const children = (state.children.get(node.id) || []).filter(isShown);
                 const collapsed = children.length > 0 && !state.expanded.has(node.id);
-                const classes = [node.kind, node.change].filter(Boolean).join(' ');
+                const classes = [node.kind, changeOf(node)].filter(Boolean).join(' ');
                 const text = label(node) + (collapsed ? ' [' + children.length + ']' : '');
                 const size = node.kind === 'method' ? FONT.method : FONT.other;
                 const from = [node.id, ...ancestors(node.id).reverse()].find(id => previous.has(id));
@@ -844,7 +893,7 @@
         const meta = document.getElementById('details-meta');
         meta.replaceChildren();
         meta.append(node.kind + ' ' + short(node.id));
-        if (node.change) {
+        if (changeOf(node)) {
             const change = document.createElement('div');
             change.className = node.change;
             change.textContent = node.change + (node.previousId ? ' (was ' + short(node.previousId) + ')' : '');
@@ -1024,16 +1073,17 @@
 
     function renderChanges() {
         const list = document.getElementById('changes');
-        list.replaceChildren(...state.graph.changes.map(change => {
+        const shown = changes();
+        list.replaceChildren(...shown.map(change => {
             const item = document.createElement('li');
             item.className = change.change;
             item.textContent = short(change.text);
             item.addEventListener('click', () => go(change.target, change.to || null, Boolean(change.to)));
             return item;
         }));
-        document.getElementById('changes-count').textContent = '(' + state.graph.changes.length + ')';
-        document.getElementById('changes-section').hidden = state.graph.changes.length === 0;
-        document.getElementById('expand-changes').hidden = state.graph.changes.length === 0;
+        document.getElementById('changes-count').textContent = '(' + shown.length + ')';
+        document.getElementById('changes-section').hidden = shown.length === 0;
+        document.getElementById('expand-changes').hidden = shown.length === 0;
     }
 
     function textWidth(text, size) {

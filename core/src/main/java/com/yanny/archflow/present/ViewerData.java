@@ -32,7 +32,7 @@ public final class ViewerData {
     }
 
     public record GraphNode(String id, String kind, String name, String parent, String file, int line, int lines,
-                            String change, String previousId, List<FlowText.Line> flow, FlowChart chart) {
+                            String change, String previousId, List<FlowText.Line> flow, FlowChart chart, boolean test) {
     }
 
     public record GraphEdge(String kind, String from, String to, String change, List<GraphSite> sites) {
@@ -94,7 +94,13 @@ public final class ViewerData {
         return new GraphNode(node.id(), name(node.kind()), node.name(), node.parent(),
                 location == null ? null : location.file(), location == null ? 0 : location.line(), node.lines(),
                 change == null ? null : name(change.change()), change == null ? null : change.previousId(),
-                FlowText.lines(model.flow(node.id())), chart(model.flow(node.id())));
+                FlowText.lines(model.flow(node.id())), chart(model.flow(node.id())), location != null && isTest(location.file()));
+    }
+
+    static boolean isTest(String file) {
+        List<String> parts = List.of(file.split("/"));
+        int src = parts.indexOf("src");
+        return src >= 0 && src + 2 < parts.size() && parts.get(src + 1).toLowerCase(Locale.ROOT).contains("test");
     }
 
     private static FlowChart chart(List<Step> flow) {

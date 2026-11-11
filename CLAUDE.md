@@ -44,7 +44,7 @@ codebase is ALI's graph analysis (`ali/common/.../plugin/server/graph`, branch `
 - **Same input, same bytes.** A model is serialised in a stable order, so a model is cached by commit forever.
 - **Core computes, the viewer shows.** `core` computes every view, diff, flow, flowchart and place in the code, and is
   tested there. The viewer's own graph logic is only the mapping of edges to the nearest visible ancestors and the
-  visibility filters (focus and Show).
+  visibility filters (focus, Show and Tests).
 - **Bad architecture is raised, not worked around.** When code turns into spaghetti or a design costs time or memory,
   it is pointed out with a proposal before the work goes on.
 
@@ -102,6 +102,9 @@ codebase is ALI's graph analysis (`ali/common/.../plugin/server/graph`, branch `
   neighbours (picking a neighbour moves the centre). Neighbours are one edge away over the enabled edge kinds; a
   selected box counts with everything inside it. Loading a diff of other commits than the shown ones switches to
   Changes and neighbours.
+- Tests: a type or method from a source set whose name holds `test` (`src/test`, `src/gametest`) is a test. Unless
+  Tests is ticked, tests, boxes holding only tests, and their edges and changes are hidden, and a box changed inside
+  only by hidden tests is not marked.
 - Nodes cannot be dragged; a drag anywhere pans. Expanding keeps the zoom and holds the toggled node in place.
   Selections form a trail with undo and redo (buttons top right, Ctrl+Z, Ctrl+Shift+Z or Ctrl+Y).
 - Source: Ctrl+click or the Source button opens a node, or an edge with one place; a click on an edge lists its places
