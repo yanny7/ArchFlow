@@ -9,19 +9,29 @@
     const FOCUS_ZOOM = 1.5;
     const PULSE = {low: 0.08, high: 0.35, duration: 800};
     const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const TRAIL_LENGTH = 100;
+    const TAP_DISTANCE = 4;
     const CHART_LABEL = 70;
     const CHART_ROW = 60;
     const CHART_ZOOM = {min: 0.7, max: 1.5};
 
     cytoscape.use(cytoscapeElk);
 
-    const state = {data: null, graph: null, byId: new Map(), children: new Map(), expanded: new Set(), kinds: new Set(), selected: null, focus: null};
+    const state = {data: null, graph: null, byId: new Map(), children: new Map(), expanded: new Set(), kinds: new Set(), selected: null, partner: null, focus: null};
     const measure = document.createElement('canvas').getContext('2d');
-    const cy = cytoscape({container: document.getElementById('graph'), style: styles()});
+    const cy = cytoscape({container: document.getElementById('graph'), style: styles(), autoungrabify: true, autounselectify: true});
     const chart = {cy: null, id: null};
-    const pulse = {element: null, animation: null};
+    const pulse = {elements: cy.collection(), generation: 0};
+    const trail = {entries: [], index: -1};
 
-    cy.on('tap', 'node', event => select(event.target.id()));
+    const graphDrag = panOnDrag(cy);
+    cy.on('tap', 'node', event => {
+        if (graphDrag.moved()) {
+            return;
+        }
+        record(event.target.id(), null);
+        select(event.target.id(), null);
+    });
     cy.on('dbltap', 'node', event => {
         const id = event.target.id();
         if (state.children.has(id)) {
@@ -32,9 +42,15 @@
     });
     document.getElementById('chart-back').addEventListener('click', closeChart);
     document.getElementById('details-chart').addEventListener('click', () => openChart(state.selected));
+    document.getElementById('undo').addEventListener('click', () => stepTrail(-1));
+    document.getElementById('redo').addEventListener('click', () => stepTrail(1));
     document.addEventListener('keydown', event => {
+        const key = event.key.toLowerCase();
         if (event.key === 'Escape') {
             closeChart();
+        } else if ((event.ctrlKey || event.metaKey) && (key === 'z' || key === 'y')) {
+            event.preventDefault();
+            stepTrail(key === 'y' || event.shiftKey ? 1 : -1);
         }
     });
     document.getElementById('view').addEventListener('change', event => showView(Number(event.target.value)));
@@ -97,7 +113,7 @@
         renderKinds();
         renderChanges();
         render(FIT);
-        select(state.byId.has(state.selected) ? state.selected : null);
+        select(state.byId.has(state.selected) ? state.selected : null, state.byId.has(state.partner) ? state.partner : null);
         const charted = chart.id && state.byId.get(chart.id);
         if (charted && charted.chart) {
             openChart(chart.id);
@@ -173,11 +189,71 @@
         render({anchor: id});
     }
 
-    function reveal(id) {
-        ancestors(id).forEach(ancestor => state.expanded.add(ancestor));
+    function panOnDrag(view) {
+        let start = null;
+        let last = null;
+        let moved = false;
+        view.on('tapstart', 'node', event => {
+            start = {...event.renderedPosition};
+            last = start;
+            moved = false;
+        });
+        view.on('tapdrag', event => {
+            if (last) {
+                const position = event.renderedPosition;
+                view.panBy({x: position.x - last.x, y: position.y - last.y});
+                last = {...position};
+                moved = moved || Math.hypot(position.x - start.x, position.y - start.y) > TAP_DISTANCE;
+            }
+        });
+        view.on('tapend', () => {
+            last = null;
+        });
+        return {moved: () => moved};
+    }
+
+    function go(id, partner) {
+        record(id, partner);
+        reveal(id, partner);
+    }
+
+    function reveal(id, partner) {
+        const ends = [id, partner].filter(Boolean);
+        ends.forEach(end => ancestors(end).forEach(ancestor => state.expanded.add(ancestor)));
         state.focus = parentOf(id);
-        render({center: id});
-        select(id);
+        render({center: ends});
+        select(id, partner);
+    }
+
+    function record(id, partner) {
+        const current = trail.entries[trail.index];
+        if (current && current.id === id && current.partner === partner) {
+            return;
+        }
+        trail.entries.splice(trail.index + 1);
+        trail.entries.push({id, partner});
+        if (trail.entries.length > TRAIL_LENGTH) {
+            trail.entries.shift();
+        }
+        trail.index = trail.entries.length - 1;
+        renderTrail();
+    }
+
+    function stepTrail(delta) {
+        const entry = trail.entries[trail.index + delta];
+        if (!entry) {
+            return;
+        }
+        trail.index += delta;
+        renderTrail();
+        if (state.byId.has(entry.id)) {
+            reveal(entry.id, state.byId.has(entry.partner) ? entry.partner : null);
+        }
+    }
+
+    function renderTrail() {
+        document.getElementById('undo').disabled = trail.index <= 0;
+        document.getElementById('redo').disabled = trail.index >= trail.entries.length - 1;
     }
 
     function expandChanges() {
@@ -246,37 +322,40 @@
 
     function highlightSelected() {
         stopPulse();
-        const element = state.selected ? cy.getElementById(state.selected) : cy.collection();
-        if (element.empty()) {
+        const node = elementOf(state.selected);
+        const partner = elementOf(state.partner);
+        if (node.empty()) {
             return;
         }
-        element.select();
-        element.connectedEdges().addClass('highlight');
+        const edges = partner.nonempty() ? node.edgesTo(partner) : node.connectedEdges();
+        node.union(partner).addClass('chosen');
+        edges.addClass('highlight');
         if (!REDUCED_MOTION) {
-            startPulse(element, true);
+            pulse.elements = partner.nonempty() ? node.union(partner).union(edges) : node;
+            const generation = pulse.generation;
+            pulse.elements.forEach(element => breathe(element, true, generation));
         }
     }
 
-    function startPulse(element, up) {
-        const animation = element.animation({style: {'overlay-opacity': up ? PULSE.high : PULSE.low}, duration: PULSE.duration, easing: 'ease-in-out-sine'});
-        pulse.element = element;
-        pulse.animation = animation;
-        animation.play().promise('completed').then(() => {
-            if (pulse.animation === animation && !element.removed()) {
-                startPulse(element, !up);
-            }
-        });
+    function elementOf(id) {
+        return id ? cy.getElementById(id) : cy.collection();
+    }
+
+    function breathe(element, up, generation) {
+        element.animation({style: {'overlay-opacity': up ? PULSE.high : PULSE.low}, duration: PULSE.duration, easing: 'ease-in-out-sine'})
+            .play().promise('completed').then(() => {
+                if (pulse.generation === generation && !element.removed()) {
+                    breathe(element, !up, generation);
+                }
+            });
     }
 
     function stopPulse() {
-        if (pulse.animation) {
-            pulse.animation.stop();
-        }
-        if (pulse.element && !pulse.element.removed()) {
-            pulse.element.removeStyle('overlay-opacity');
-        }
-        pulse.element = null;
-        pulse.animation = null;
+        pulse.generation++;
+        const alive = pulse.elements.filter(element => !element.removed());
+        alive.stop(true);
+        alive.removeStyle('overlay-opacity');
+        pulse.elements = cy.collection();
     }
 
     function inFocus(edge) {
@@ -289,8 +368,8 @@
             cy.fit(undefined, PADDING);
             return;
         }
-        const id = keep && (keep.anchor || keep.center);
-        const element = id ? cy.getElementById(id) : cy.collection();
+        const ids = keep && keep.anchor ? [keep.anchor] : (keep && keep.center) || [];
+        const element = ids.reduce((collection, id) => collection.union(cy.getElementById(id)), cy.collection());
         if (element.empty()) {
             return;
         }
@@ -327,9 +406,10 @@
         return node.name;
     }
 
-    function select(id) {
+    function select(id, partner) {
         state.selected = id;
-        cy.elements().unselect();
+        state.partner = partner;
+        cy.elements().removeClass('chosen');
         cy.edges().removeClass('highlight');
         highlightSelected();
         const section = document.getElementById('details');
@@ -371,7 +451,7 @@
         if (target && state.byId.has(target)) {
             const link = document.createElement('a');
             link.textContent = short(line.text);
-            link.addEventListener('click', () => reveal(target));
+            link.addEventListener('click', () => go(target, null));
             item.append(link);
         } else {
             item.append(short(line.text));
@@ -405,10 +485,14 @@
         showLegend(true);
         document.getElementById('chart-title').textContent = short(node.id);
         if (!chart.cy) {
-            chart.cy = cytoscape({container: document.getElementById('chart-graph'), style: chartStyles()});
+            chart.cy = cytoscape({container: document.getElementById('chart-graph'), style: chartStyles(), autoungrabify: true, autounselectify: true});
+            const chartDrag = panOnDrag(chart.cy);
             chart.cy.on('tap', 'node.link', event => {
+                if (chartDrag.moved()) {
+                    return;
+                }
                 closeChart();
-                reveal(event.target.data('target'));
+                go(event.target.data('target'), null);
             });
         }
         chart.cy.resize();
@@ -495,7 +579,7 @@
             const item = document.createElement('li');
             item.className = change.change;
             item.textContent = short(change.text);
-            item.addEventListener('click', () => reveal(change.target));
+            item.addEventListener('click', () => go(change.target, change.to || null));
             return item;
         }));
         document.getElementById('changes-count').textContent = '(' + state.graph.changes.length + ')';
@@ -565,7 +649,7 @@
             {selector: 'node.removed', style: {'border-color': color('--removed'), 'border-width': 3, 'border-style': 'dashed', 'opacity': 0.75}},
             {selector: 'node.changed', style: {'border-color': color('--changed'), 'border-width': 3}},
             {selector: 'node.inside', style: {'border-color': color('--changed'), 'border-width': 2, 'border-style': 'dashed'}},
-            {selector: 'node:selected', style: {'overlay-color': color('--link'), 'overlay-opacity': 0.15, 'overlay-padding': 4}},
+            {selector: 'node.chosen', style: {'overlay-color': color('--link'), 'overlay-opacity': 0.15, 'overlay-padding': 4}},
             {selector: 'edge', style: {
                 'curve-style': 'bezier', 'width': 'data(width)', 'line-color': muted, 'target-arrow-color': muted,
                 'target-arrow-shape': 'triangle', 'arrow-scale': 0.8, 'opacity': 0.8
@@ -576,7 +660,8 @@
             {selector: 'edge.removed', style: {'line-color': color('--removed'), 'target-arrow-color': color('--removed'), 'line-style': 'dashed', 'width': 2.5}},
             {selector: 'edge.changed', style: {'line-color': color('--changed'), 'target-arrow-color': color('--changed'), 'width': 2.5}},
             {selector: 'edge.background', style: {'opacity': 0.3, 'width': 1}},
-            {selector: 'edge.highlight', style: {'opacity': 1, 'z-compound-depth': 'top', 'line-color': color('--link'), 'target-arrow-color': color('--link')}}
+            {selector: 'edge.highlight', style: {'opacity': 1, 'z-compound-depth': 'top', 'line-color': color('--link'), 'target-arrow-color': color('--link'),
+                'overlay-color': color('--link'), 'overlay-padding': 4}}
         ];
     }
 

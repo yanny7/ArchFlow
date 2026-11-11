@@ -37,7 +37,7 @@ public final class ViewerData {
     public record GraphEdge(String kind, String from, String to, String change) {
     }
 
-    public record ChangeEntry(String target, String change, String text) {
+    public record ChangeEntry(String target, String to, String change, String text) {
     }
 
     private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().create();
@@ -78,7 +78,7 @@ public final class ViewerData {
                 .map(EdgeChange::edge)
                 .forEach(edge -> edges.add(edge(edge, Change.REMOVED)));
         List<ChangeEntry> changes = DiffText.entries(diff, false).stream()
-                .map(entry -> new ChangeEntry(entry.target(), name(entry.change()), entry.line()))
+                .map(entry -> new ChangeEntry(entry.target(), entry.to(), name(entry.change()), entry.line()))
                 .toList();
         return new Graph(name(view), nodes, edges, changes);
     }

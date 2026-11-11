@@ -44,7 +44,7 @@ class ViewerDataTest {
                 change a.Walker#run(long,int): ~ method a.Walker#run(long,int) (was a.Walker#run(int,int))
                 change a.Walker#step(long): ~ method a.Walker#step(long) (was a.Walker#step(int))
                 change a.Walker#walk(int): ~ method a.Walker#walk(int)
-                change a.Walker: + dependency a.Walker -> a.Context""", String.join("\n", lines(graph)));
+                change a.Walker to a.Context: + dependency a.Walker -> a.Context""", String.join("\n", lines(graph)));
     }
 
     private static List<String> lines(ViewerData.Graph graph) {
@@ -57,7 +57,8 @@ class ViewerDataTest {
         for (ViewerData.GraphEdge edge : graph.edges()) {
             lines.add(edge.kind() + " " + edge.from() + " -> " + edge.to() + (edge.change() == null ? "" : " [" + edge.change() + "]"));
         }
-        graph.changes().forEach(change -> lines.add("change " + change.target() + ": " + change.text()));
+        graph.changes().forEach(change -> lines.add("change " + change.target() + (change.to() == null ? "" : " to " + change.to())
+                + ": " + change.text()));
         return lines;
     }
 }

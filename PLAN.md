@@ -101,6 +101,8 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   is the only graph logic in JS. Everything else is computed in `core` and tested there.
 - **Focus.** The last expanded node is the focus: edges that neither start nor end inside it fade into the background,
   and the edges of the selected node stand out. ELK routes the edges orthogonally.
+- **Navigation.** Nodes cannot be dragged; a drag anywhere pans, so the layout stays the one ELK made. A change of an
+  edge selects both its ends and the edge between them. Selections form a trail with undo and redo.
 - **Flowchart.** A method opens as a control flow chart over the graph (double click on a method without children, or
   the button in its details). `core` builds it from the flow of the view (`FlowChart`): a box per call, branch, arm,
   loop, return and throw; an `if` without `else` falls through. A click on a call returns to the graph at its target.

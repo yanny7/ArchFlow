@@ -6,7 +6,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class DiffText {
-    public record Entry(String target, Change change, String text) {
+    public record Entry(String target, String to, Change change, String text) {
         public String line() {
             return mark(change) + " " + text;
         }
@@ -25,7 +25,7 @@ public final class DiffText {
             if (inside || change.change() != Change.INSIDE) {
                 String previous = change.previousId() == null ? "" : " (was " + change.previousId() + ")";
                 String text = change.node().kind().name().toLowerCase() + " " + change.node().id() + previous;
-                entries.add(new Entry(change.node().id(), change.change(), text));
+                entries.add(new Entry(change.node().id(), null, change.change(), text));
             }
         }
         Set<String> appeared = diff.nodes().stream()
@@ -35,7 +35,7 @@ public final class DiffText {
         for (EdgeChange change : diff.edges()) {
             if (!appeared.contains(change.edge().from())) {
                 String text = change.edge().kind().name().toLowerCase() + " " + change.edge().from() + " -> " + change.edge().to();
-                entries.add(new Entry(change.edge().from(), change.change(), text));
+                entries.add(new Entry(change.edge().from(), change.edge().to(), change.change(), text));
             }
         }
         return entries;
