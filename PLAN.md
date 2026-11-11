@@ -116,6 +116,11 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   commit)`: without a commit the file of the working copy opens, with one a read-only copy of that commit's version.
   Source paths and `minLines` are project settings (`.idea/archflow.xml`); models are cached in the IDE's system
   directory. The platform's own `slf4j` is used, so the plugin does not bundle one.
+- **From the code to the graph.** "Show in Archflow" in the editor menu, or "Follow caret" in the tool window, sends
+  `archflowReveal(file, line, exact, following)`. The page selects an edge with a place on that line, else the
+  innermost node that holds the line, else the type of the file. Lines are exact for the working copy, or when the
+  editor text equals the file in the shown commit; otherwise only the type is selected. Following the caret keeps
+  the trail of selections as it is.
 
 ## Toolchain
 

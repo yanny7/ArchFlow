@@ -24,6 +24,7 @@
     const cy = cytoscape({container: document.getElementById('graph'), style: styles(), autoungrabify: true, autounselectify: true});
     const chart = {cy: null, id: null};
     const trail = {entries: [], index: -1};
+    let pendingReveal = null;
 
     const graphDrag = panOnDrag(cy);
     cy.on('tap', 'node, edge', event => {
@@ -110,6 +111,32 @@
         const outline = data.views.findIndex(view => view.view === 'outline');
         select.value = String(Math.max(outline, 0));
         showView(Math.max(outline, 0));
+        if (pendingReveal) {
+            const [file, line, exact, following] = pendingReveal;
+            pendingReveal = null;
+            window.archflowReveal(file, line, exact, following);
+        }
+    };
+
+    window.archflowReveal = function (file, line, exact, following) {
+        if (!state.graph) {
+            pendingReveal = [file, line, exact, following];
+            return;
+        }
+        const target = locate(file, line, exact);
+        if (!target) {
+            return;
+        }
+        if (target.id !== state.selected || target.partner !== state.partner) {
+            if (!following) {
+                closeChart();
+                record(target.id, target.partner, target.forced);
+            }
+            reveal(target.id, target.partner, target.forced);
+        }
+        const note = document.getElementById('details-note');
+        note.textContent = target.note || '';
+        note.hidden = !target.note;
     };
 
     function showView(index) {
@@ -330,6 +357,37 @@
         document.getElementById('menu').hidden = true;
     }
 
+    function locate(file, line, exact) {
+        if (exact) {
+            const edges = state.graph.edges.filter(edge => (edge.sites || []).some(site => site.file === file && site.line === line));
+            const edge = edges.find(candidate => state.kinds.has(candidate.kind)) || edges[0];
+            if (edge) {
+                return {id: edge.from, partner: edge.to, forced: !state.kinds.has(edge.kind), note: null};
+            }
+            const node = innermost(state.graph.nodes, file, line);
+            if (node) {
+                return {id: node.id, partner: null, forced: false, note: elsewhere(file, line, node)};
+            }
+        }
+        const type = state.graph.nodes.find(node => node.kind === 'type' && node.file === file);
+        const note = exact ? null : 'The file in the editor differs from the shown commit, so only its type is selected.';
+        return type ? {id: type.id, partner: null, forced: false, note} : null;
+    }
+
+    function innermost(nodes, file, line) {
+        return nodes.filter(node => node.file === file && node.line <= line && line < node.line + node.lines)
+            .reduce((best, node) => !best || node.lines < best.lines ? node : best, null);
+    }
+
+    function elsewhere(file, line, node) {
+        const all = state.data.views.find(view => view.view === 'all-functions');
+        if (!all || all === state.graph) {
+            return null;
+        }
+        const exact = innermost(all.nodes, file, line);
+        return exact && exact.id !== node.id ? short(exact.id) + ' is not in this view, All functions shows it.' : null;
+    }
+
     function go(id, partner, change) {
         record(id, partner, change);
         reveal(id, partner, change);
@@ -337,12 +395,17 @@
 
     function reveal(id, partner, change) {
         const ends = [id, partner].filter(Boolean);
-        ends.forEach(end => ancestors(end).forEach(ancestor => state.expanded.add(ancestor)));
-        state.focus = parentOf(id);
+        const closed = ends.flatMap(ancestors).filter(ancestor => !state.expanded.has(ancestor));
         state.selected = id;
         state.partner = partner;
         state.change = change;
-        render({center: ends});
+        if (closed.length > 0 || change) {
+            closed.forEach(ancestor => state.expanded.add(ancestor));
+            state.focus = parentOf(id);
+            render({center: ends});
+        } else {
+            zoomTo(ends.reduce((collection, end) => collection.union(cy.getElementById(end)), cy.collection()));
+        }
         select(id, partner, change);
     }
 
@@ -517,6 +580,7 @@
         cy.edges().removeClass('highlight');
         highlightSelected();
         renderSource();
+        document.getElementById('details-note').hidden = true;
         const section = document.getElementById('details');
         const node = id && state.byId.get(id);
         if (!node) {

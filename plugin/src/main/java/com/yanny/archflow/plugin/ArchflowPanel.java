@@ -3,17 +3,26 @@ package com.yanny.archflow.plugin;
 import com.intellij.ide.ui.LafManagerListener;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.editor.EditorFactory;
+import com.intellij.openapi.editor.event.CaretEvent;
+import com.intellij.openapi.editor.event.CaretListener;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.ComboBox;
+import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.openapi.vfs.newvfs.BulkFileListener;
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.SimpleListCellRenderer;
+import com.intellij.ui.components.JBCheckBox;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.ui.jcef.JBCefBrowser;
@@ -34,6 +43,9 @@ import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -50,6 +62,7 @@ final class ArchflowPanel extends JPanel implements Disposable {
     private static final int HISTORY = 100;
     private static final int REFRESH_DELAY_MS = 1500;
     private static final int LABEL_LENGTH = 50;
+    private static final int FOLLOW_DELAY_MS = 300;
 
     private final Project project;
     private final JBCefBrowser browser = new JBCefBrowser();
@@ -58,9 +71,11 @@ final class ArchflowPanel extends JPanel implements Disposable {
     private final ComboBox<Choice> to = new ComboBox<>();
     private final JBTextField paths = new JBTextField(30);
     private final JSpinner minLines = new JSpinner(new SpinnerNumberModel(10, 1, 1000, 1));
+    private final JBCheckBox follow = new JBCheckBox("Follow caret");
     private final Alarm refresh = new Alarm(Alarm.ThreadToUse.SWING_THREAD, this);
+    private final Alarm caret = new Alarm(Alarm.ThreadToUse.SWING_THREAD, this);
+    private final List<String> pending = new ArrayList<>();
     private boolean loaded;
-    private String pending;
 
     ArchflowPanel(Project project) {
         super(new BorderLayout());
@@ -86,6 +101,8 @@ final class ArchflowPanel extends JPanel implements Disposable {
         ArchflowSettings.Data settings = ArchflowSettings.of(project).getState();
         paths.setText(String.join(", ", settings.paths));
         minLines.setValue(settings.minLines);
+        follow.setSelected(settings.followCaret);
+        follow.addActionListener(event -> ArchflowSettings.of(project).getState().followCaret = follow.isSelected());
         from.addItem(NONE);
         to.addItem(WORKING_COPY);
         JButton show = new JButton("Show");
@@ -113,6 +130,7 @@ final class ArchflowPanel extends JPanel implements Disposable {
         toolbar.add(new JBLabel("Min lines"));
         toolbar.add(minLines);
         toolbar.add(show);
+        toolbar.add(follow);
         add(toolbar, BorderLayout.NORTH);
         add(browser.getComponent(), BorderLayout.CENTER);
 
@@ -131,6 +149,18 @@ final class ArchflowPanel extends JPanel implements Disposable {
         });
         ApplicationManager.getApplication().getMessageBus().connect(this)
                 .subscribe(LafManagerListener.TOPIC, (LafManagerListener) source -> applyTheme());
+        EditorFactory.getInstance().getEventMulticaster().addCaretListener(new CaretListener() {
+            @Override
+            public void caretPositionChanged(CaretEvent event) {
+                Editor editor = event.getEditor();
+                if (follow.isSelected() && project.equals(editor.getProject()) && isShowing()) {
+                    VirtualFile file = FileDocumentManager.getInstance().getFile(editor.getDocument());
+                    int line = event.getNewPosition().line + 1;
+                    caret.cancelAllRequests();
+                    caret.addRequest(() -> reveal(file, line, true), FOLLOW_DELAY_MS);
+                }
+            }
+        }, this);
         loadHistory();
     }
 
@@ -185,15 +215,47 @@ final class ArchflowPanel extends JPanel implements Disposable {
         }.queue();
     }
 
+    void reveal(VirtualFile file, int line, boolean following) {
+        if (file == null || !file.isInLocalFileSystem()) {
+            return;
+        }
+        Choice toChoice = (Choice) to.getSelectedItem();
+        String commit = toChoice == null ? null : toChoice.revision();
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            try {
+                Path root = ArchflowService.of(project).git().workTree();
+                Path path = file.toNioPath();
+                if (path.startsWith(root)) {
+                    String relative = root.relativize(path).toString().replace('\\', '/');
+                    boolean exact = commit == null || sameAs(file, commit, relative);
+                    String arguments = jsString(relative) + ", " + line + ", " + exact + ", " + following;
+                    deliver("if (window.archflowReveal) archflowReveal(" + arguments + ");");
+                }
+            } catch (IOException e) {
+                deliver(message("Archflow cannot read git: " + e.getMessage()));
+            }
+        });
+    }
+
+    private boolean sameAs(VirtualFile file, String commit, String path) {
+        String text = ApplicationManager.getApplication().runReadAction((Computable<String>) () -> {
+            Document document = FileDocumentManager.getInstance().getDocument(file);
+            return document == null ? null : document.getText();
+        });
+        try {
+            return text != null && text.equals(StringUtil.convertLineSeparators(ArchflowService.of(project).fileAt(commit, path)));
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
     private void pageLoaded() {
         execute("window.archflowOpen = function (file, line, commit) {"
                 + openQuery.inject("file + '\\n' + line + '\\n' + (commit || '')") + "};");
         applyTheme();
         loaded = true;
-        if (pending != null) {
-            execute(pending);
-            pending = null;
-        }
+        pending.forEach(this::execute);
+        pending.clear();
     }
 
     private void applyTheme() {
@@ -205,7 +267,7 @@ final class ArchflowPanel extends JPanel implements Disposable {
             if (loaded) {
                 execute(script);
             } else {
-                pending = script;
+                pending.add(script);
             }
         }, project.getDisposed());
     }
@@ -215,8 +277,11 @@ final class ArchflowPanel extends JPanel implements Disposable {
     }
 
     private static String message(String text) {
-        String escaped = text.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ");
-        return "archflowMessage('" + escaped + "');";
+        return "archflowMessage(" + jsString(text) + ");";
+    }
+
+    private static String jsString(String text) {
+        return "'" + text.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ") + "'";
     }
 
     @Override

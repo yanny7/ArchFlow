@@ -10,4 +10,11 @@
         <toolWindow id="Archflow" anchor="bottom" icon="AllIcons.Toolwindows.ToolWindowHierarchy"
                     factoryClass="com.yanny.archflow.plugin.ArchflowToolWindowFactory"/>
     </extensions>
+
+    <actions>
+        <action id="Archflow.ShowInArchflow" class="com.yanny.archflow.plugin.ShowInArchflowAction" text="Show in Archflow"
+                description="Selects in the Archflow graph what the caret is on: an edge whose place is this line, or the innermost node">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+    </actions>
 </idea-plugin>

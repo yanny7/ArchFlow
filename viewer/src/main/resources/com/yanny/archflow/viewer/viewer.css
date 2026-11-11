@@ -93,6 +93,7 @@ ol { list-style: none; margin: 0; padding: 0; }
 .removed { color: var(--removed); }
 .changed { color: var(--changed); }
 .inside { color: var(--inside); }
+#details-note { margin-bottom: 6px; padding: 4px 8px; border-left: 3px solid var(--inside); color: var(--muted); }
 #details-meta { color: var(--muted); margin-bottom: 6px; word-break: break-all; }
 #details-flow .line { color: var(--muted); display: inline-block; min-width: 3.5em; }
 a { color: var(--link); cursor: pointer; text-decoration: none; }

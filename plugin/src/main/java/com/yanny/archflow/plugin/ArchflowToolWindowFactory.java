@@ -12,6 +12,8 @@ import com.intellij.ui.jcef.JBCefApp;
 import javax.swing.SwingConstants;
 
 public final class ArchflowToolWindowFactory implements ToolWindowFactory, DumbAware {
+    static final String ID = "Archflow";
+
     @Override
     public void createToolWindowContent(Project project, ToolWindow toolWindow) {
         ContentFactory factory = ContentFactory.getInstance();
