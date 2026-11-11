@@ -65,7 +65,7 @@ public final class ArchflowService implements Disposable {
         Model after = afterCommit == null ? models.workingCopy() : models.commit(afterCommit);
         String beforeCommit = before(selection, afterCommit);
         Model before = beforeCommit == null ? null : models.commit(beforeCommit);
-        String title = project.getName() + " " + (beforeCommit == null ? "" : shortId(beforeCommit) + " → ")
+        String title = (beforeCommit == null ? "" : shortId(beforeCommit) + " → ")
                 + (afterCommit == null ? "working copy" : shortId(afterCommit));
         ViewOptions options = ViewOptions.DEFAULT.withMinLines(selection.minLines());
         return ViewerData.json(ViewerData.data(title, beforeCommit, before, afterCommit, after, options));

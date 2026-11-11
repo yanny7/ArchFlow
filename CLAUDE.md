@@ -109,8 +109,9 @@ codebase is ALI's graph analysis (`ali/common/.../plugin/server/graph`, branch `
   that edge even when its kind is switched off.
 - A method opens as a flowchart over the graph (double click on a method without children, or the details button).
 - Layout: ELK lays out only the visible part, in a web worker (on the page's thread when no worker starts); a newer
-  layout cancels an older one, and a render changes only the elements that appear or go. Opening all changes, and a
-  Show of over 1000 nodes, asks first. Nothing animates continuously, since every frame redraws the whole
+  layout cancels an older one, and a render changes only the elements that appear or go. Any render of over 1000 nodes
+  (Everything with many boxes open, Open changes, Show) asks first; a loaded diff whose Changes and neighbours would
+  exceed it opens on Everything and offers it. Nothing animates continuously, since every frame redraws the whole
   canvas.
 - The viewer has no automated tests; check it in a browser with a page from `archflow html`.
 

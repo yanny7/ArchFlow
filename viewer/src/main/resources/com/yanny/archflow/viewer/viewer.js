@@ -181,7 +181,11 @@
         renderKinds();
         renderChanges();
         renderLens();
-        applyLens(true);
+        if (!applyLens(false)) {
+            state.lens = 'all';
+            renderLens();
+            applyLens(true);
+        }
         cy.elements().remove();
         render(FIT);
         select(state.byId.has(state.selected) ? state.selected : null, state.byId.has(state.partner) ? state.partner : null, state.change);
@@ -319,11 +323,12 @@
         const shown = lensNodes();
         if (shown && shown.size > OPEN_LIMIT && !confirmed) {
             const lens = state.lens;
-            warn('This view shows ' + shown.size + ' nodes, the layout may take a while.', () => {
+            const name = document.querySelector('#lens option[value="' + lens + '"]').text;
+            warn(name + ' shows ' + shown.size + ' nodes, the layout may take a while.', () => {
                 state.lens = lens;
                 renderLens();
                 applyLens(true);
-                render(FIT);
+                render(FIT, true);
             });
             return false;
         }
@@ -512,6 +517,10 @@
         state.partner = partner;
         state.change = change;
         const recentred = state.lens === 'detail' && applyLens(false);
+        if (state.lens === 'detail' && !recentred) {
+            select(id, partner, change);
+            return;
+        }
         const closed = ends.flatMap(ancestors).filter(ancestor => !state.expanded.has(ancestor));
         if (closed.length > 0 || change || recentred) {
             closed.forEach(ancestor => state.expanded.add(ancestor));
@@ -570,9 +579,8 @@
             warn('Opening all changes shows ' + visible + ' nodes, the layout may take a while.', () => expandChanges(true));
             return;
         }
-        hideWarning();
         state.expanded = opened;
-        render(FIT);
+        render(FIT, true);
     }
 
     function startElkWorker() {
@@ -640,7 +648,12 @@
         }
     }
 
-    function render(keep) {
+    function render(keep, confirmed) {
+        const count = state.graph.nodes.filter(node => isShown(node.id) && isVisible(node.id)).length;
+        if (count > OPEN_LIMIT && cy.nodes().length <= OPEN_LIMIT && confirmed !== true) {
+            warn('This view shows ' + count + ' nodes, the layout may take a while.', () => render(keep, true));
+            return;
+        }
         const anchor = keep && keep.anchor ? cy.getElementById(keep.anchor) : cy.collection();
         const before = anchor.nonempty() ? anchor.renderedPosition() : null;
         const previous = new Map(cy.nodes().map(node => [node.id(), {...node.position()}]));
