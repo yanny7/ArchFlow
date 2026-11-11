@@ -21,6 +21,10 @@
     <button id="collapse" type="button">Collapse all</button>
     <button id="fit" type="button">Fit</button>
   </div>
+  <div id="open-warning" class="row warning" hidden>
+    <span id="open-warning-text"></span>
+    <button id="open-anyway" type="button">Open anyway</button>
+  </div>
  </div>
   <section id="details" hidden>
     <h2 id="details-name"></h2>
@@ -45,6 +49,7 @@
     <button id="undo" type="button" title="Previous selection (Ctrl+Z)" disabled>↶ Undo</button>
     <button id="redo" type="button" title="Next selection (Ctrl+Shift+Z or Ctrl+Y)" disabled>↷ Redo</button>
     <button id="source" type="button" title="Open in the editor (Ctrl+click)" hidden disabled>↗ Source</button>
+    <span id="busy" hidden>Laying out…</span>
   </div>
   <div id="menu" class="floating" hidden></div>
   <details id="legend" class="floating">

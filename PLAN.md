@@ -59,7 +59,9 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   commit parses only the files that changed. Facts hold names as written, never resolved targets, because a target
   depends on other files. Linking runs per commit and is cheap.
 - **A commit's model is built once.** Models are cached by commit and source roots and are never invalidated.
-- **Lay out only what is visible.** The viewer lays out the expanded part of the graph, not the whole model.
+- **Lay out only what is visible.** The viewer lays out the expanded part of the graph, not the whole model. It
+  changes only the elements that appear or go, runs ELK in a web worker (on the page's thread when no worker starts),
+  and a newer layout cancels an older one. Opening all changes asks first when it would show over 1000 nodes.
 - **Measured as it grows.** From step 3 on, the CLI logs the time of a model and of a log over the pilot range.
 
 ## Architecture

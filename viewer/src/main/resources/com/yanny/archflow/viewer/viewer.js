@@ -18,7 +18,12 @@
     const CHART_ROW = 60;
     const CHART_ZOOM = {min: 0.7, max: 1.5};
 
+    const FONT = {method: 10, other: 11};
+    const OPEN_LIMIT = 1000;
+
     cytoscape.use(cytoscapeElk);
+    const elkWorker = startElkWorker();
+    let layouts = 0;
 
     const state = {data: null, graph: null, byId: new Map(), children: new Map(), expanded: new Set(), kinds: new Set(), selected: null, partner: null, change: false, focus: null};
     const measure = document.createElement('canvas').getContext('2d');
@@ -78,7 +83,8 @@
         }
     });
     document.getElementById('view').addEventListener('change', event => showView(Number(event.target.value)));
-    document.getElementById('expand-changes').addEventListener('click', expandChanges);
+    document.getElementById('expand-changes').addEventListener('click', () => expandChanges(false));
+    document.getElementById('open-anyway').addEventListener('click', () => expandChanges(true));
     document.getElementById('collapse').addEventListener('click', () => {
         state.expanded.clear();
         state.focus = null;
@@ -162,6 +168,7 @@
         }
         renderKinds();
         renderChanges();
+        cy.elements().remove();
         render(FIT);
         select(state.byId.has(state.selected) ? state.selected : null, state.byId.has(state.partner) ? state.partner : null, state.change);
         const charted = chart.id && state.byId.get(chart.id);
@@ -450,25 +457,104 @@
         document.getElementById('redo').disabled = trail.index >= trail.entries.length - 1;
     }
 
-    function expandChanges() {
+    function expandChanges(confirmed) {
+        const opened = new Set(state.expanded);
         for (const node of state.graph.nodes) {
             if (node.change && node.change !== 'inside') {
-                ancestors(node.id).forEach(ancestor => state.expanded.add(ancestor));
+                ancestors(node.id).forEach(ancestor => opened.add(ancestor));
             }
         }
+        const visible = state.graph.nodes.filter(node => ancestors(node.id).every(ancestor => opened.has(ancestor))).length;
+        const warning = document.getElementById('open-warning');
+        if (visible > OPEN_LIMIT && confirmed !== true) {
+            document.getElementById('open-warning-text').textContent = 'Opening all changes shows ' + visible + ' nodes, the layout may take a while.';
+            warning.hidden = false;
+            return;
+        }
+        warning.hidden = true;
+        state.expanded = opened;
         render(FIT);
+    }
+
+    function startElkWorker() {
+        const source = document.getElementById('elk-source');
+        const api = Object.getPrototypeOf(ELK.prototype);
+        const direct = api.layout;
+        const worker = {elk: null, busy: false, ready: false, bypass: false};
+        if (!source || typeof Worker !== 'function') {
+            return worker;
+        }
+        // elk.bundled.js installs its worker message handler only once an ELK is constructed inside the worker.
+        const url = URL.createObjectURL(new Blob([source.textContent, ';new ELK();'], {type: 'text/javascript'}));
+        const create = () => {
+            const elk = new ELK({workerFactory: () => new Worker(url)});
+            elk.layout = direct.bind(elk);
+            return elk;
+        };
+        api.layout = function (graph, options) {
+            if (worker.bypass || !worker.ready) {
+                return direct.call(this, graph, options);
+            }
+            if (worker.busy) {
+                worker.elk.terminateWorker();
+                worker.elk = create();
+            }
+            const elk = worker.elk;
+            worker.busy = true;
+            const plain = JSON.parse(JSON.stringify(graph, (key, value) => key === '_cyEle' ? undefined : value));
+            return elk.layout(plain, options).then(result => {
+                copyLayout(graph, result);
+                return graph;
+            }).finally(() => {
+                if (worker.elk === elk) {
+                    worker.busy = false;
+                }
+            });
+        };
+        try {
+            worker.elk = create();
+            worker.elk.layout({id: 'probe', children: []}).then(() => {
+                worker.ready = true;
+            });
+        } catch (error) {
+            worker.elk = null;
+        }
+        return worker;
+    }
+
+    function copyLayout(target, result) {
+        for (const [key, value] of Object.entries(result)) {
+            if ((key === 'children' || key === 'edges') && Array.isArray(target[key])) {
+                value.forEach((item, index) => copyLayout(target[key][index], item));
+            } else {
+                target[key] = value;
+            }
+        }
+    }
+
+    function runDirect(layout) {
+        elkWorker.bypass = true;
+        try {
+            layout.run();
+        } finally {
+            elkWorker.bypass = false;
+        }
     }
 
     function render(keep) {
         const anchor = keep && keep.anchor ? cy.getElementById(keep.anchor) : cy.collection();
         const before = anchor.nonempty() ? anchor.renderedPosition() : null;
-        const elements = [];
+        const previous = new Map(cy.nodes().map(node => [node.id(), {...node.position()}]));
+        const elements = new Map();
         for (const node of state.graph.nodes) {
             if (isVisible(node.id)) {
                 const collapsed = state.children.has(node.id) && !state.expanded.has(node.id);
                 const classes = [node.kind, node.change].filter(Boolean).join(' ');
-                const count = collapsed ? ' [' + state.children.get(node.id).length + ']' : '';
-                elements.push({group: 'nodes', data: {id: node.id, label: label(node) + count, parent: parentOf(node.id) || undefined}, classes});
+                const text = label(node) + (collapsed ? ' [' + state.children.get(node.id).length + ']' : '');
+                const size = node.kind === 'method' ? FONT.method : FONT.other;
+                const from = [node.id, ...ancestors(node.id).reverse()].find(id => previous.has(id));
+                elements.set(node.id, {group: 'nodes', classes, position: from ? {...previous.get(from)} : {x: 0, y: 0},
+                    data: {id: node.id, label: text, parent: parentOf(node.id) || undefined, width: textWidth(text, size) + 12, height: size * 1.3 + 12}});
             }
         }
         const edges = new Map();
@@ -490,15 +576,12 @@
             entry.changes.add(edge.change || 'same');
         }
         for (const [key, edge] of edges) {
-            elements.push({group: 'edges', data: {id: key, kind: edge.kind, source: edge.source, target: edge.target, width: Math.min(1 + Math.log2(edge.count), 5)},
+            elements.set(key, {group: 'edges', data: {id: key, kind: edge.kind, source: edge.source, target: edge.target, width: Math.min(1 + Math.log2(edge.count), 5)},
                 classes: [edge.kind, edgeChange(edge.changes), inFocus(edge) ? null : 'background'].filter(Boolean).join(' ')});
         }
-        cy.batch(() => {
-            cy.elements().remove();
-            cy.add(elements);
-        });
+        update(elements);
         const layout = cy.layout({
-            name: 'elk', nodeDimensionsIncludeLabels: true, fit: false, animate: false, useElkEdgeGeometry: true, elkEdgeRadius: 6,
+            name: 'elk', nodeDimensionsIncludeLabels: false, fit: false, animate: false, useElkEdgeGeometry: true, elkEdgeRadius: 6,
             elk: {
                 'algorithm': 'layered',
                 'elk.direction': 'RIGHT',
@@ -509,9 +592,37 @@
                 'elk.padding': '[top=30,left=12,bottom=12,right=12]'
             }
         });
-        layout.one('layoutstop', () => keepViewport(keep, before));
+        const current = ++layouts;
+        document.getElementById('busy').hidden = false;
+        layout.one('layoutstop', () => {
+            if (current === layouts) {
+                document.getElementById('busy').hidden = true;
+            }
+            keepViewport(keep, before);
+        });
         layout.run();
         highlightSelected();
+    }
+
+    function update(elements) {
+        cy.batch(() => {
+            cy.elements().filter(element => !elements.has(element.id())).remove();
+            const added = [];
+            for (const [id, json] of elements) {
+                const element = cy.getElementById(id);
+                if (element.empty()) {
+                    added.push(json);
+                    continue;
+                }
+                if (element.data('label') !== json.data.label || element.data('width') !== json.data.width) {
+                    element.data({label: json.data.label, width: json.data.width, height: json.data.height});
+                }
+                if (element.classes().join(' ') !== json.classes) {
+                    element.classes(json.classes);
+                }
+            }
+            cy.add(added);
+        });
     }
 
     function highlightSelected() {
@@ -712,7 +823,7 @@
             chart.cy.add(elements);
         });
         const layout = chart.cy.layout({
-            name: 'elk', nodeDimensionsIncludeLabels: true, fit: false, animate: false, useElkEdgeGeometry: true, elkEdgeRadius: 6,
+            name: 'elk', nodeDimensionsIncludeLabels: false, fit: false, animate: false, useElkEdgeGeometry: true, elkEdgeRadius: 6,
             elk: {
                 'algorithm': 'layered',
                 'elk.direction': 'DOWN',
@@ -724,7 +835,7 @@
             }
         });
         layout.one('layoutstop', fitChart);
-        layout.run();
+        runDirect(layout);
     }
 
     function fitChart() {
@@ -794,13 +905,13 @@
         document.getElementById('expand-changes').hidden = state.graph.changes.length === 0;
     }
 
-    function fontSize(node) {
-        return node.hasClass('method') ? 10 : 11;
+    function textWidth(text, size) {
+        measure.font = size + 'px system-ui, sans-serif';
+        return measure.measureText(text).width;
     }
 
-    function textWidth(node) {
-        measure.font = fontSize(node) + 'px system-ui, sans-serif';
-        return measure.measureText(node.data('label')).width;
+    function chartWidth(node, padding) {
+        return textWidth(node.data('label'), FONT.other) + padding;
     }
 
     function palette() {
@@ -812,15 +923,15 @@
         const color = palette();
         return [
             {selector: 'node', style: {
-                'label': 'data(label)', 'font-size': 11, 'color': color('--text'), 'text-valign': 'center', 'text-halign': 'center',
-                'shape': 'round-rectangle', 'width': node => textWidth(node) + 16, 'height': 26, 'padding': '0px',
+                'label': 'data(label)', 'font-size': FONT.other, 'color': color('--text'), 'text-valign': 'center', 'text-halign': 'center',
+                'shape': 'round-rectangle', 'width': node => chartWidth(node, 16), 'height': 26, 'padding': '0px',
                 'border-width': 1, 'border-color': color('--border'), 'background-color': color('--node')
             }},
-            {selector: 'node.start, node.end', style: {'shape': 'ellipse', 'width': node => textWidth(node) + 30, 'color': color('--muted')}},
-            {selector: 'node.branch', style: {'shape': 'diamond', 'width': node => textWidth(node) + 50, 'height': 40,
+            {selector: 'node.start, node.end', style: {'shape': 'ellipse', 'width': node => chartWidth(node, 30), 'color': color('--muted')}},
+            {selector: 'node.branch', style: {'shape': 'diamond', 'width': node => chartWidth(node, 50), 'height': 40,
                 'background-color': color('--type')}},
             {selector: 'node.arm', style: {'background-opacity': 0, 'border-width': 0, 'font-style': 'italic', 'color': color('--muted')}},
-            {selector: 'node.loop', style: {'shape': 'hexagon', 'width': node => textWidth(node) + 50, 'background-color': color('--package')}},
+            {selector: 'node.loop', style: {'shape': 'hexagon', 'width': node => chartWidth(node, 50), 'background-color': color('--package')}},
             {selector: 'node.call', style: {'color': color('--muted')}},
             {selector: 'node.call.link', style: {'color': color('--link'), 'border-color': color('--link')}},
             {selector: 'node.return', style: {'color': color('--muted')}},
@@ -839,13 +950,13 @@
         const border = color('--border');
         return [
             {selector: 'node', style: {
-                'label': 'data(label)', 'font-size': 11, 'color': text, 'text-valign': 'center', 'text-halign': 'center',
-                'shape': 'round-rectangle', 'width': node => textWidth(node) + 12, 'height': node => fontSize(node) * 1.3 + 12,
+                'label': 'data(label)', 'font-size': FONT.other, 'color': text, 'text-valign': 'center', 'text-halign': 'center',
+                'shape': 'round-rectangle', 'width': 'data(width)', 'height': 'data(height)',
                 'border-width': BORDER.width, 'border-color': border, 'border-opacity': BORDER.faint, 'background-color': color('--node')
             }},
             {selector: 'node.package', style: {'background-color': color('--package'), 'shape': 'cut-rectangle'}},
             {selector: 'node.type', style: {'background-color': color('--type')}},
-            {selector: 'node.method', style: {'font-size': 10, 'corner-radius': METHOD_RADIUS}},
+            {selector: 'node.method', style: {'font-size': FONT.method, 'corner-radius': METHOD_RADIUS}},
             {selector: 'node', style: {'padding': '0px'}},
             {selector: ':parent', style: {
                 'text-valign': 'top', 'text-halign': 'center', 'text-margin-y': -4, 'padding': '12px',

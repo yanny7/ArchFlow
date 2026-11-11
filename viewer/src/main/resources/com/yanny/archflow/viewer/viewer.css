@@ -46,6 +46,7 @@
     --type: #25364a;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { height: 100%; margin: 0; }
 body {
   display: flex;
@@ -101,6 +102,9 @@ a:hover { text-decoration: underline; }
 .floating { position: absolute; right: 12px; padding: 6px 10px; background: var(--panel); border: 1px solid var(--border);
   border-radius: 6px; font-size: 12px; }
 #navigation { top: 12px; z-index: 1; display: flex; gap: 6px; }
+#busy { align-self: center; color: var(--muted); }
+.warning { padding: 6px 8px; border-left: 3px solid var(--inside); color: var(--muted); }
+.warning button { margin-top: 4px; }
 #menu { right: auto; z-index: 1; padding: 4px 0; min-width: 160px; max-width: 480px; }
 #menu button { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: transparent;
   padding: 3px 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

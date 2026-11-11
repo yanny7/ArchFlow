@@ -207,7 +207,7 @@ final class ArchflowPanel extends JPanel implements Disposable {
             @Override
             public void run(ProgressIndicator indicator) {
                 try {
-                    deliver("archflowLoad(" + ArchflowService.of(project).viewerData(selection) + ");");
+                    deliver("archflowLoad(" + ViewerPage.parse(ArchflowService.of(project).viewerData(selection)) + ");");
                 } catch (Exception e) {
                     deliver(message("Archflow failed: " + e.getMessage()));
                 }
