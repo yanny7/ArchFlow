@@ -22,7 +22,7 @@ import java.util.Map;
 
 public final class ModelSource {
     // Bump on any change to extraction, linking or the model: cached models are never invalidated otherwise.
-    public static final int FORMAT = 3;
+    public static final int FORMAT = 4;
 
     private final GitRepo git;
     private final List<String> paths;

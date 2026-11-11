@@ -135,35 +135,35 @@ class LinkingTest {
     @Test
     void dependenciesRememberWhereTheyComeFromAndTheImportThatBroughtTheType() {
         assertEquals("""
-                core.Base app/Walker.java:8 supertype Base
-                core.Base app/Walker.java:18 call super()
-                core.Base app/Walker.java:33 call log()
-                core.Context app/Walker.java:9 field VISITORS
-                core.Context app/Walker.java:11 call Context.create()
-                core.Context app/Walker.java:11 field own
-                core.Context app/Walker.java:18 call Context.create()
-                core.Context app/Walker.java:29 call context.first()
-                core.Context app/Walker.java:34 call core.Context.create()
-                core.Context.Entry app/Walker.java:31 call new Context.Entry()
-                core.Context.Registry app/Walker.java:30 call context.registry.register()
-                core.Context.Registry app/Walker.java:31 call context.registry.register()
-                core.Context.Registry app/Walker.java:32 call context.registry::register
-                core.Handler app/Walker.java:10 field extra
-                core.Handler app/Walker.java:21 parameter handlers of walk(List)
-                core.Handler app/Walker.java:23 call handler.handle()
-                core.Handler app/Walker.java:26 call handler.handle()
-                core.Handler app/Walker.java:28 call extra[].handle()
-                core.Handler app/Walker.java:29 call context.first().handle()
-                core.Visitor app/Walker.java:9 field VISITORS
-                core.handlers.Echo app/Walker.java:4 import core.handlers.Echo
-                core.handlers.Echo app/Walker.java:9 call new Echo()
-                core.handlers.Echo app/Walker.java:30 call new Echo()
-                core.handlers.Echo app/Walker.java:31 call new Echo()
-                util.Strings app/Walker.java:6 import util.Strings.trim
-                util.Strings app/Walker.java:14 call trim()
-                util.Strings app/Walker.java:33 call trim()""", Fixtures.model("linking").sites().stream()
+                core.Base app/Walker.java:8 SUPERTYPE Base
+                core.Base app/Walker.java:18 CALL super()
+                core.Base app/Walker.java:33 CALL log()
+                core.Context app/Walker.java:9 FIELD VISITORS
+                core.Context app/Walker.java:11 CALL Context.create()
+                core.Context app/Walker.java:11 FIELD own
+                core.Context app/Walker.java:18 CALL Context.create()
+                core.Context app/Walker.java:29 CALL context.first()
+                core.Context app/Walker.java:34 CALL core.Context.create()
+                core.Context.Entry app/Walker.java:31 CALL new Context.Entry()
+                core.Context.Registry app/Walker.java:30 CALL context.registry.register()
+                core.Context.Registry app/Walker.java:31 CALL context.registry.register()
+                core.Context.Registry app/Walker.java:32 CALL context.registry::register
+                core.Handler app/Walker.java:10 FIELD extra
+                core.Handler app/Walker.java:21 PARAMETER handlers of walk(List)
+                core.Handler app/Walker.java:23 CALL handler.handle()
+                core.Handler app/Walker.java:26 CALL handler.handle()
+                core.Handler app/Walker.java:28 CALL extra[].handle()
+                core.Handler app/Walker.java:29 CALL context.first().handle()
+                core.Visitor app/Walker.java:9 FIELD VISITORS
+                core.handlers.Echo app/Walker.java:4 IMPORT core.handlers.Echo
+                core.handlers.Echo app/Walker.java:9 CALL new Echo()
+                core.handlers.Echo app/Walker.java:30 CALL new Echo()
+                core.handlers.Echo app/Walker.java:31 CALL new Echo()
+                util.Strings app/Walker.java:6 IMPORT util.Strings.trim
+                util.Strings app/Walker.java:14 CALL trim()
+                util.Strings app/Walker.java:33 CALL trim()""", Fixtures.model("linking").sites().stream()
                 .filter(site -> site.edge().from().equals("app.Walker"))
-                .map(site -> site.edge().to() + " " + site.file() + ":" + site.line() + " " + site.text())
+                .map(site -> site.edge().to() + " " + site.file() + ":" + site.line() + " " + site.kind() + " " + site.text())
                 .collect(Collectors.joining("\n")));
     }
 }

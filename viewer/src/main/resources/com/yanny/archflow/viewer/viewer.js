@@ -13,6 +13,7 @@
     const METHOD_RADIUS = 12;
     const TAP_DISTANCE = 4;
     const MENU_PLACES = 10;
+    const DECLARING_SITES = new Set(['parameter', 'return', 'supertype', 'declaration']);
     const CHART_LABEL = 70;
     const CHART_ROW = 60;
     const CHART_ZOOM = {min: 0.7, max: 1.5};
@@ -281,7 +282,7 @@
                 .filter(place => !seen.has(place.file + ':' + place.line) && seen.add(place.file + ':' + place.line));
         }
         const node = state.byId.get(state.selected);
-        return node && node.file ? [{file: node.file, line: node.line, text: node.kind, commit: commitOf(node.id)}] : [];
+        return node && node.file ? [{file: node.file, line: node.line, kind: node.kind, text: '', commit: commitOf(node.id)}] : [];
     }
 
     function canOpen() {
@@ -321,7 +322,7 @@
             }
         } else {
             const found = places();
-            found.slice(0, MENU_PLACES).forEach(place => items.push(menuItem(fileName(place.file) + ':' + place.line + '  ' + short(place.text),
+            found.slice(0, MENU_PLACES).forEach(place => items.push(menuItem(fileName(place.file) + ':' + place.line + '  ' + siteLabel(place),
                 () => open(place), canOpen())));
             if (found.length > MENU_PLACES) {
                 items.push(menuItem('… ' + (found.length - MENU_PLACES) + ' more in the details', null, false));
@@ -349,6 +350,10 @@
         return button;
     }
 
+    function siteLabel(site) {
+        return (site.kind + ' ' + short(site.text)).trim();
+    }
+
     function fileName(file) {
         return file.substring(file.lastIndexOf('/') + 1);
     }
@@ -359,7 +364,8 @@
 
     function locate(file, line, exact) {
         if (exact) {
-            const edges = state.graph.edges.filter(edge => (edge.sites || []).some(site => site.file === file && site.line === line));
+            const edges = state.graph.edges.filter(edge => (edge.sites || [])
+                .some(site => site.file === file && site.line === line && !DECLARING_SITES.has(site.kind)));
             const edge = edges.find(candidate => state.kinds.has(candidate.kind)) || edges[0];
             if (edge) {
                 return {id: edge.from, partner: edge.to, forced: !state.kinds.has(edge.kind), note: null};
@@ -628,7 +634,7 @@
                 const number = document.createElement('span');
                 number.className = 'line';
                 number.append(sourceLink(site.file, site.line, String(site.line), commitOfEdge(edge)));
-                item.append(number, '  ' + short(site.text));
+                item.append(number, '  ' + siteLabel(site));
                 items.push(item);
             }
         }

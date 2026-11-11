@@ -13,6 +13,7 @@ import com.yanny.archflow.model.FlowChart;
 import com.yanny.archflow.model.FlowText;
 import com.yanny.archflow.model.Model;
 import com.yanny.archflow.model.Node;
+import com.yanny.archflow.model.SiteKind;
 import com.yanny.archflow.model.Step;
 import com.yanny.archflow.view.View;
 import com.yanny.archflow.view.ViewOptions;
@@ -37,7 +38,7 @@ public final class ViewerData {
     public record GraphEdge(String kind, String from, String to, String change, List<GraphSite> sites) {
     }
 
-    public record GraphSite(String file, int line, String text) {
+    public record GraphSite(String kind, String file, int line, String text) {
     }
 
     public record ChangeEntry(String target, String to, String change, String text) {
@@ -113,7 +114,7 @@ public final class ViewerData {
             this.model = model;
             model.nodes().forEach(node -> nodes.put(node.id(), node));
             model.sites().forEach(site -> dependencies.computeIfAbsent(site.edge(), edge -> new ArrayList<>())
-                    .add(new GraphSite(site.file(), site.line(), site.text())));
+                    .add(new GraphSite(name(site.kind()), site.file(), site.line(), site.text())));
         }
 
         List<GraphSite> of(Edge edge) {
@@ -121,7 +122,12 @@ public final class ViewerData {
             String file = from == null || from.location() == null ? null : from.location().file();
             return switch (edge.kind()) {
                 case DEPENDENCY -> dependencies.getOrDefault(edge, List.of());
-                case OVERRIDE -> file == null ? List.of() : List.of(new GraphSite(file, from.location().line(), "declaration"));
+                case OVERRIDE -> {
+                    if (file == null) {
+                        yield List.of();
+                    }
+                    yield List.of(new GraphSite(name(SiteKind.DECLARATION), file, from.location().line(), ""));
+                }
                 case CALL -> {
                     List<GraphSite> sites = new ArrayList<>();
                     calls(model.flow(edge.from()), edge.to(), file, sites);
@@ -134,7 +140,7 @@ public final class ViewerData {
             for (Step step : steps) {
                 switch (step) {
                     case Step.Call call when target.equals(call.target()) ->
-                            sites.add(new GraphSite(file, call.line(), "call " + call.text()));
+                            sites.add(new GraphSite(name(SiteKind.CALL), file, call.line(), call.text()));
                     case Step.Branch branch -> branch.arms().forEach(arm -> calls(arm.steps(), target, file, sites));
                     case Step.Loop loop -> calls(loop.steps(), target, file, sites);
                     default -> {

@@ -62,7 +62,7 @@ class ViewerDataTest {
         }
         for (ViewerData.GraphEdge edge : graph.edges()) {
             lines.add(edge.kind() + " " + edge.from() + " -> " + edge.to() + (edge.change() == null ? "" : " [" + edge.change() + "]"));
-            edge.sites().forEach(site -> lines.add("  at " + site.file() + ":" + site.line() + " " + site.text()));
+            edge.sites().forEach(site -> lines.add("  at " + site.file() + ":" + site.line() + " " + site.kind() + " " + site.text()));
         }
         graph.changes().forEach(change -> lines.add("change " + change.target() + (change.to() == null ? "" : " to " + change.to())
                 + ": " + change.text()));

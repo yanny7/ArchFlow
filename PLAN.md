@@ -117,8 +117,9 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   Source paths and `minLines` are project settings (`.idea/archflow.xml`); models are cached in the IDE's system
   directory. The platform's own `slf4j` is used, so the plugin does not bundle one.
 - **From the code to the graph.** "Show in Archflow" in the editor menu, or "Follow caret" in the tool window, sends
-  `archflowReveal(file, line, exact, following)`. The page selects an edge with a place on that line, else the
-  innermost node that holds the line, else the type of the file. Lines are exact for the working copy, or when the
+  `archflowReveal(file, line, exact, following)`. The page selects an edge used on that line (a call, a field type
+  or an import), else the innermost node that holds the line, else the type of the file. A parameter, return type or
+  supertype declares its node, so a declaration line selects the method or the type. Every site has its kind. Lines are exact for the working copy, or when the
   editor text equals the file in the shown commit; otherwise only the type is selected. Following the caret keeps
   the trail of selections as it is.
 

@@ -15,6 +15,7 @@ import com.yanny.archflow.model.Model;
 import com.yanny.archflow.model.Node;
 import com.yanny.archflow.model.NodeKind;
 import com.yanny.archflow.model.Site;
+import com.yanny.archflow.model.SiteKind;
 import com.yanny.archflow.model.Step;
 
 import java.util.ArrayList;
@@ -70,13 +71,13 @@ public final class Linker {
     private void type(TypeInfo type) {
         String parent = type.enclosing() != null ? type.enclosing().id() : packageOf(type);
         add(new Node(type.id(), NodeKind.TYPE, type.facts().name(), parent, type.facts().location()));
-        type.facts().supertypes().forEach(ref -> depend(type, ref, "supertype " + ref.name()));
-        type.facts().fields().forEach(field -> depend(type, field.type(), "field " + field.name()));
+        type.facts().supertypes().forEach(ref -> depend(type, ref, SiteKind.SUPERTYPE, ref.name()));
+        type.facts().fields().forEach(field -> depend(type, field.type(), SiteKind.FIELD, field.name()));
         for (MethodFacts method : type.facts().methods()) {
             String id = methodId(type.id(), method);
             String signature = id.substring(id.indexOf('#') + 1);
-            method.params().forEach(param -> depend(type, param.type(), "parameter " + param.name() + " of " + signature));
-            depend(type, method.returnType(), "return type of " + signature);
+            method.params().forEach(param -> depend(type, param.type(), SiteKind.PARAMETER, param.name() + " of " + signature));
+            depend(type, method.returnType(), SiteKind.RETURN, "of " + signature);
             String name = switch (method.name()) {
                 case MethodFacts.CONSTRUCTOR -> type.facts().name();
                 case MethodFacts.STATIC_INIT -> "static initializer";
@@ -138,22 +139,22 @@ public final class Linker {
         return type.file().packageName().isEmpty() ? null : type.file().packageName();
     }
 
-    private void depend(TypeInfo from, TypeRef ref, String text) {
+    private void depend(TypeInfo from, TypeRef ref, SiteKind kind, String text) {
         if (ref == null) {
             return;
         }
         TypeInfo to = index.resolve(ref, from);
         if (to != null) {
-            depend(from, to.id(), ref.line(), text);
+            depend(from, to.id(), kind, ref.line(), text);
         }
-        ref.args().forEach(arg -> depend(from, arg, text));
+        ref.args().forEach(arg -> depend(from, arg, kind, text));
     }
 
-    private void depend(TypeInfo from, String to, int line, String text) {
+    private void depend(TypeInfo from, String to, SiteKind kind, int line, String text) {
         if (!to.equals(from.id())) {
             Edge edge = new Edge(EdgeKind.DEPENDENCY, from.id(), to);
             edges.add(edge);
-            sites.add(new Site(edge, from.file().file(), line, text));
+            sites.add(new Site(edge, kind, from.file().file(), line, text));
         }
     }
 
@@ -163,7 +164,7 @@ public final class Linker {
             Edge edge = new Edge(EdgeKind.DEPENDENCY, type.id(), imported);
             boolean typeImport = !imp.asterisk() || imp.isStatic();
             if (typeImport && dependencies.contains(edge)) {
-                sites.add(new Site(edge, type.file().file(), imp.line(), "import " + imp.name()));
+                sites.add(new Site(edge, SiteKind.IMPORT, type.file().file(), imp.line(), imp.name()));
             }
         }
     }
@@ -180,7 +181,7 @@ public final class Linker {
                 if (target != null) {
                     edges.add(new Edge(EdgeKind.CALL, method, target));
                     String owner = target.contains("#") ? target.substring(0, target.indexOf('#')) : target;
-                    depend(type, owner, call.line(), "call " + call.text());
+                    depend(type, owner, SiteKind.CALL, call.line(), call.text());
                 }
                 yield new Step.Call(call.line(), target, call.text(), resolved.external());
             }
