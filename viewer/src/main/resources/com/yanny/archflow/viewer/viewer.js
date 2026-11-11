@@ -8,7 +8,7 @@
     const PADDING = 20;
     const FOCUS_ZOOM = 1.5;
     const HALO = 0.25;
-    const BORDER = {width: 2, chosen: 3, faint: 0.45};
+    const BORDER = {width: 2, chosen: 3};
     // The label of a box is drawn above its bounds, so the box ELK places must also hold the labels of its children.
     const BOX_PADDING = '[top=32,left=14,bottom=14,right=14]';
     const TRAIL_LENGTH = 100;
@@ -1131,12 +1131,12 @@
         const color = palette();
         const text = color('--text');
         const muted = color('--muted');
-        const border = color('--border');
+        const changes = ['added', 'removed', 'changed', 'inside'];
         return [
             {selector: 'node', style: {
                 'label': 'data(label)', 'font-size': FONT.other, 'color': text, 'text-valign': 'center', 'text-halign': 'center',
                 'shape': 'round-rectangle', 'width': 'data(width)', 'height': 'data(height)',
-                'border-width': BORDER.width, 'border-color': border, 'border-opacity': BORDER.faint, 'background-color': color('--node')
+                'border-width': BORDER.width, 'border-color': color('--border-2'), 'background-color': color('--node')
             }},
             {selector: 'node.package', style: {'background-color': color('--package'), 'shape': 'cut-rectangle'}},
             {selector: 'node.type', style: {'background-color': color('--type')}},
@@ -1146,21 +1146,19 @@
                 'text-valign': 'top', 'text-halign': 'center', 'text-margin-y': -4, 'padding': '12px',
                 'background-opacity': 0.5, 'font-weight': 'bold'
             }},
-            {selector: 'node.chosen', style: {'border-color': text, 'border-opacity': 1, 'border-width': BORDER.chosen}},
-            {selector: 'node.added', style: {'border-color': color('--added')}},
-            {selector: 'node.removed', style: {'border-color': color('--removed')}},
-            {selector: 'node.changed', style: {'border-color': color('--changed')}},
-            {selector: 'node.inside', style: {'border-color': color('--inside')}},
+            ...changes.map(change => ({selector: 'node.' + change, style: {'border-color': color('--' + change + '-2')}})),
+            {selector: 'node.chosen', style: {'border-color': text, 'border-width': BORDER.chosen}},
+            ...changes.map(change => ({selector: 'node.chosen.' + change, style: {'border-color': color('--' + change)}})),
             {selector: 'edge', style: {
                 'curve-style': 'bezier', 'width': 'data(width)', 'line-color': muted, 'target-arrow-color': muted,
                 'target-arrow-shape': 'triangle', 'arrow-scale': 0.8, 'opacity': 0.8
             }},
             {selector: 'edge.override', style: {'line-style': 'dotted', 'target-arrow-shape': 'triangle-backcurve', 'target-arrow-fill': 'hollow'}},
             {selector: 'edge.dependency', style: {'line-style': 'dashed', 'target-arrow-shape': 'vee'}},
-            {selector: 'edge.added', style: {'line-color': color('--added'), 'target-arrow-color': color('--added')}},
-            {selector: 'edge.removed', style: {'line-color': color('--removed'), 'target-arrow-color': color('--removed')}},
-            {selector: 'edge.changed', style: {'line-color': color('--changed'), 'target-arrow-color': color('--changed')}},
-            {selector: 'edge.background', style: {'opacity': 0.3, 'width': 1}},
+            ...changes.map(change => ({selector: 'edge.' + change, style: {'line-color': color('--' + change), 'target-arrow-color': color('--' + change)}})),
+            {selector: 'edge.background', style: {'width': 1, 'line-color': color('--muted-2'), 'target-arrow-color': color('--muted-2')}},
+            ...changes.map(change => ({selector: 'edge.background.' + change,
+                style: {'line-color': color('--' + change + '-2'), 'target-arrow-color': color('--' + change + '-2')}})),
             {selector: 'edge.highlight', style: {'opacity': 1, 'z-compound-depth': 'top',
                 'underlay-color': color('--link'), 'underlay-opacity': HALO, 'underlay-padding': 2}}
         ];
