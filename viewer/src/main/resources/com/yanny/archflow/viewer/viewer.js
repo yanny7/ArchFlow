@@ -7,9 +7,8 @@
     const FIT = {fit: true};
     const PADDING = 20;
     const FOCUS_ZOOM = 1.5;
-    const PULSE = {low: 0.1, high: 0.45, duration: 800};
-    const BORDER = {width: 2, chosen: 3, pulse: 5, faint: 0.45};
-    const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const HALO = 0.25;
+    const BORDER = {width: 2, chosen: 3, faint: 0.45};
     const TRAIL_LENGTH = 100;
     const METHOD_RADIUS = 12;
     const TAP_DISTANCE = 4;
@@ -24,7 +23,6 @@
     const measure = document.createElement('canvas').getContext('2d');
     const cy = cytoscape({container: document.getElementById('graph'), style: styles(), autoungrabify: true, autounselectify: true});
     const chart = {cy: null, id: null};
-    const pulse = {elements: cy.collection(), generation: 0};
     const trail = {entries: [], index: -1};
 
     const graphDrag = panOnDrag(cy);
@@ -448,7 +446,6 @@
     }
 
     function highlightSelected() {
-        stopPulse();
         const node = elementOf(state.selected);
         const partner = elementOf(state.partner);
         if (node.empty()) {
@@ -457,33 +454,10 @@
         const edges = partner.nonempty() ? node.edgesTo(partner) : node.connectedEdges();
         node.union(partner).addClass('chosen');
         edges.addClass('highlight');
-        if (!REDUCED_MOTION) {
-            pulse.elements = partner.nonempty() ? node.union(partner).union(edges) : node;
-            const generation = pulse.generation;
-            pulse.elements.forEach(element => breathe(element, true, generation));
-        }
     }
 
     function elementOf(id) {
         return id ? cy.getElementById(id) : cy.collection();
-    }
-
-    function breathe(element, up, generation) {
-        const style = element.isNode() ? {'border-width': up ? BORDER.pulse : BORDER.chosen} : {'underlay-opacity': up ? PULSE.high : PULSE.low};
-        element.animation({style, duration: PULSE.duration, easing: 'ease-in-out-sine'})
-            .play().promise('completed').then(() => {
-                if (pulse.generation === generation && !element.removed()) {
-                    breathe(element, !up, generation);
-                }
-            });
-    }
-
-    function stopPulse() {
-        pulse.generation++;
-        const alive = pulse.elements.filter(element => !element.removed());
-        alive.stop(true);
-        alive.removeStyle('underlay-opacity border-width');
-        pulse.elements = cy.collection();
     }
 
     function inFocus(edge) {
@@ -823,7 +797,7 @@
             {selector: 'edge.changed', style: {'line-color': color('--changed'), 'target-arrow-color': color('--changed')}},
             {selector: 'edge.background', style: {'opacity': 0.3, 'width': 1}},
             {selector: 'edge.highlight', style: {'opacity': 1, 'z-compound-depth': 'top',
-                'underlay-color': color('--link'), 'underlay-opacity': PULSE.low, 'underlay-padding': 2}}
+                'underlay-color': color('--link'), 'underlay-opacity': HALO, 'underlay-padding': 2}}
         ];
     }
 
