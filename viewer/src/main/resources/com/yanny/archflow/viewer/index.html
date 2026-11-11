@@ -25,6 +25,7 @@
   <section id="details" hidden>
     <h2 id="details-name"></h2>
     <div id="details-meta"></div>
+    <button id="details-chart" type="button" hidden>Flowchart</button>
     <ol id="details-flow"></ol>
   </section>
   <section id="changes-section">
@@ -32,7 +33,14 @@
     <ol id="changes"></ol>
   </section>
 </aside>
-<main id="graph"><div id="message" hidden></div></main>
+<main id="stage">
+  <div id="graph"></div>
+  <div id="message" hidden></div>
+  <div id="chart" hidden>
+    <div id="chart-bar"><button id="chart-back" type="button">← Back</button> <span id="chart-title"></span></div>
+    <div id="chart-graph"></div>
+  </div>
+</main>
 <!--LIBS-->
 <!--DATA-->
 <!--SCRIPT-->

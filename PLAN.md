@@ -100,6 +100,9 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   is the only graph logic in JS. Everything else is computed in `core` and tested there.
 - **Focus.** The last expanded node is the focus: edges that neither start nor end inside it fade into the background,
   and the edges of the selected node stand out. ELK routes the edges orthogonally.
+- **Flowchart.** A method opens as a control flow chart over the graph (double click on a method without children, or
+  the button in its details). `core` builds it from the flow of the view (`FlowChart`): a box per call, branch, arm,
+  loop, return and throw; an `if` without `else` falls through. A click on a call returns to the graph at its target.
 - **Git** goes through JGit in `core`, for the CLI and the plugin alike.
 - **Plugin.** A tool window shows the viewer page in JCEF (the bundled plugin `com.intellij.modules.jcef`) and sends
   it the data of the chosen commits through `archflowLoad`. The page calls back through `archflowOpen(file, line,
@@ -147,6 +150,8 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
   logical node (instruction meaning = `Instructions` + `Arithmetic` + `Branches`).
 - Rules checked against the model, such as the layers of `GRAPH.md` run as a test.
 - Kotlin sources.
+- Data flow of a method (where values are defined and used). Needs facts about variables that extraction does not
+  collect yet.
 
 ## Open questions
 

@@ -6,15 +6,33 @@
     const DEFAULT_KINDS = {'outline': ['call', 'override'], 'all-functions': ['call', 'override'], 'dependencies': ['dependency']};
     const FIT = {fit: true};
     const PADDING = 20;
+    const CHART_LABEL = 70;
+    const CHART_ROW = 60;
+    const CHART_ZOOM = {min: 0.7, max: 1.5};
 
     cytoscape.use(cytoscapeElk);
 
     const state = {data: null, graph: null, byId: new Map(), children: new Map(), expanded: new Set(), kinds: new Set(), selected: null, focus: null};
     const measure = document.createElement('canvas').getContext('2d');
     const cy = cytoscape({container: document.getElementById('graph'), style: styles()});
+    const chart = {cy: null, id: null};
 
     cy.on('tap', 'node', event => select(event.target.id()));
-    cy.on('dbltap', 'node', event => toggle(event.target.id()));
+    cy.on('dbltap', 'node', event => {
+        const id = event.target.id();
+        if (state.children.has(id)) {
+            toggle(id);
+        } else {
+            openChart(id);
+        }
+    });
+    document.getElementById('chart-back').addEventListener('click', closeChart);
+    document.getElementById('details-chart').addEventListener('click', () => openChart(state.selected));
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+            closeChart();
+        }
+    });
     document.getElementById('view').addEventListener('change', event => showView(Number(event.target.value)));
     document.getElementById('expand-changes').addEventListener('click', expandChanges);
     document.getElementById('collapse').addEventListener('click', () => {
@@ -28,6 +46,9 @@
     window.archflowTheme = function (theme) {
         document.documentElement.dataset.theme = theme;
         cy.style(styles());
+        if (chart.cy) {
+            chart.cy.style(chartStyles());
+        }
     };
 
     window.archflowMessage = function (text) {
@@ -72,6 +93,12 @@
         renderChanges();
         render(FIT);
         select(state.byId.has(state.selected) ? state.selected : null);
+        const charted = chart.id && state.byId.get(chart.id);
+        if (charted && charted.chart) {
+            openChart(chart.id);
+        } else {
+            closeChart();
+        }
     }
 
     function parentOf(id) {
@@ -269,6 +296,7 @@
         cy.getElementById(id).select();
         cy.getElementById(id).connectedEdges().addClass('highlight');
         section.hidden = false;
+        document.getElementById('details-chart').hidden = !node.chart;
         document.getElementById('details-name').textContent = label(node);
         const meta = document.getElementById('details-meta');
         meta.replaceChildren();
@@ -324,6 +352,69 @@
         return commit || null;
     }
 
+    function openChart(id) {
+        const node = state.byId.get(id);
+        if (!node || !node.chart) {
+            return;
+        }
+        chart.id = id;
+        document.getElementById('chart').hidden = false;
+        document.getElementById('chart-title').textContent = short(node.id);
+        if (!chart.cy) {
+            chart.cy = cytoscape({container: document.getElementById('chart-graph'), style: chartStyles()});
+            chart.cy.on('tap', 'node.link', event => {
+                closeChart();
+                reveal(event.target.data('target'));
+            });
+        }
+        chart.cy.resize();
+        const elements = node.chart.boxes.map(box => ({group: 'nodes', data: {id: 'b' + box.id, label: boxLabel(box), target: box.target},
+            position: {x: 0, y: box.id * CHART_ROW},
+            classes: [box.kind.toLowerCase(), box.target && state.byId.has(box.target) ? 'link' : null].filter(Boolean).join(' ')}));
+        node.chart.arrows.forEach((arrow, index) => elements.push({group: 'edges', data: {id: 'a' + index, source: 'b' + arrow.from, target: 'b' + arrow.to}}));
+        chart.cy.batch(() => {
+            chart.cy.elements().remove();
+            chart.cy.add(elements);
+        });
+        const layout = chart.cy.layout({
+            name: 'elk', nodeDimensionsIncludeLabels: true, fit: false, animate: false, useElkEdgeGeometry: true, elkEdgeRadius: 6,
+            elk: {
+                'algorithm': 'layered',
+                'elk.direction': 'DOWN',
+                'elk.edgeRouting': 'ORTHOGONAL',
+                'elk.layered.cycleBreaking.strategy': 'MODEL_ORDER',
+                'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
+                'elk.layered.spacing.nodeNodeBetweenLayers': 30,
+                'elk.spacing.nodeNode': 20
+            }
+        });
+        layout.one('layoutstop', fitChart);
+        layout.run();
+    }
+
+    function fitChart() {
+        const view = chart.cy;
+        view.fit(undefined, PADDING);
+        if (view.zoom() > CHART_ZOOM.max) {
+            view.zoom(CHART_ZOOM.max);
+            view.center();
+        } else if (view.zoom() < CHART_ZOOM.min) {
+            const start = view.getElementById('b0').position();
+            view.zoom(CHART_ZOOM.min);
+            view.pan({x: view.width() / 2 - start.x * CHART_ZOOM.min, y: PADDING * 2 - start.y * CHART_ZOOM.min});
+        }
+    }
+
+    function closeChart() {
+        chart.id = null;
+        document.getElementById('chart').hidden = true;
+    }
+
+    function boxLabel(box) {
+        const text = short(box.text);
+        return text.length > CHART_LABEL ? text.substring(0, CHART_LABEL - 1) + '…' : text;
+    }
+
     function renderKinds() {
         const fieldset = document.getElementById('kinds');
         const present = new Set(state.graph.edges.map(edge => edge.kind));
@@ -371,14 +462,44 @@
         return measure.measureText(node.data('label')).width;
     }
 
-    function styles() {
+    function palette() {
         const css = getComputedStyle(document.documentElement);
-        const color = name => css.getPropertyValue(name).trim();
+        const theme = document.documentElement.dataset.theme;
+        return {
+            color: name => css.getPropertyValue(name).trim(),
+            dark: theme ? theme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches
+        };
+    }
+
+    function chartStyles() {
+        const {color, dark} = palette();
+        return [
+            {selector: 'node', style: {
+                'label': 'data(label)', 'font-size': 11, 'color': color('--text'), 'text-valign': 'center', 'text-halign': 'center',
+                'shape': 'round-rectangle', 'width': node => textWidth(node) + 16, 'height': 26, 'padding': '0px',
+                'border-width': 1, 'border-color': color('--border'), 'background-color': dark ? '#2f3237' : '#ffffff'
+            }},
+            {selector: 'node.start, node.end', style: {'shape': 'ellipse', 'width': node => textWidth(node) + 30, 'color': color('--muted')}},
+            {selector: 'node.branch', style: {'shape': 'diamond', 'width': node => textWidth(node) + 50, 'height': 40,
+                'background-color': dark ? '#25364a' : '#e3eefb'}},
+            {selector: 'node.arm', style: {'background-opacity': 0, 'border-width': 0, 'font-style': 'italic', 'color': color('--muted')}},
+            {selector: 'node.loop', style: {'shape': 'hexagon', 'width': node => textWidth(node) + 50, 'background-color': dark ? '#33363c' : '#eef0f3'}},
+            {selector: 'node.call', style: {'color': color('--muted')}},
+            {selector: 'node.call.link', style: {'color': color('--link'), 'border-color': color('--link')}},
+            {selector: 'node.return', style: {'color': color('--muted')}},
+            {selector: 'node.throw', style: {'border-color': color('--removed'), 'color': color('--removed')}},
+            {selector: 'edge', style: {
+                'curve-style': 'bezier', 'width': 1, 'line-color': color('--muted'), 'target-arrow-color': color('--muted'),
+                'target-arrow-shape': 'triangle', 'arrow-scale': 0.8
+            }}
+        ];
+    }
+
+    function styles() {
+        const {color, dark} = palette();
         const text = color('--text');
         const muted = color('--muted');
         const border = color('--border');
-        const theme = document.documentElement.dataset.theme;
-        const dark = theme ? theme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
         return [
             {selector: 'node', style: {
                 'label': 'data(label)', 'font-size': 11, 'color': text, 'text-valign': 'center', 'text-halign': 'center',

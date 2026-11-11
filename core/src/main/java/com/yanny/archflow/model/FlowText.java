@@ -22,7 +22,7 @@ public final class FlowText {
             switch (step) {
                 case Step.Call call -> lines.add(new Line(call.line(), depth, "call " + target(call)));
                 case Step.Branch branch -> {
-                    lines.add(new Line(branch.line(), depth, branch.subject() == null ? "if" : "switch " + branch.subject()));
+                    lines.add(new Line(branch.line(), depth, branchLabel(branch)));
                     for (Step.Arm arm : branch.arms()) {
                         lines.add(new Line(Line.NONE, depth + 1, armLabel(branch, arm)));
                         add(arm.steps(), depth + 2, lines);
@@ -38,17 +38,25 @@ public final class FlowText {
         }
     }
 
-    private static String target(Step.Call call) {
+    static String target(Step.Call call) {
         if (call.resolved()) {
             return call.target();
         }
         return (call.external() ? "external " : "? ") + call.text();
     }
 
-    private static String armLabel(Step.Branch branch, Step.Arm arm) {
+    static String branchLabel(Step.Branch branch) {
+        return branch.subject() == null ? "if" : "switch " + branch.subject();
+    }
+
+    static String armLabel(Step.Branch branch, Step.Arm arm) {
         if (arm.condition() == null) {
-            return branch.subject() == null ? "else" : "default";
+            return otherwise(branch);
         }
         return branch.subject() == null ? arm.condition() : "case " + arm.condition();
+    }
+
+    static String otherwise(Step.Branch branch) {
+        return branch.subject() == null ? "else" : "default";
     }
 }

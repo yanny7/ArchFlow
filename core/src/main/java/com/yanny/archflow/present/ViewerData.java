@@ -9,9 +9,11 @@ import com.yanny.archflow.diff.EdgeChange;
 import com.yanny.archflow.diff.ModelDiff;
 import com.yanny.archflow.diff.NodeChange;
 import com.yanny.archflow.model.Edge;
+import com.yanny.archflow.model.FlowChart;
 import com.yanny.archflow.model.FlowText;
 import com.yanny.archflow.model.Model;
 import com.yanny.archflow.model.Node;
+import com.yanny.archflow.model.Step;
 import com.yanny.archflow.view.View;
 import com.yanny.archflow.view.ViewOptions;
 
@@ -29,7 +31,7 @@ public final class ViewerData {
     }
 
     public record GraphNode(String id, String kind, String name, String parent, String file, int line, int lines,
-                            String change, String previousId, List<FlowText.Line> flow) {
+                            String change, String previousId, List<FlowText.Line> flow, FlowChart chart) {
     }
 
     public record GraphEdge(String kind, String from, String to, String change) {
@@ -86,7 +88,11 @@ public final class ViewerData {
         return new GraphNode(node.id(), name(node.kind()), node.name(), node.parent(),
                 location == null ? null : location.file(), location == null ? 0 : location.line(), node.lines(),
                 change == null ? null : name(change.change()), change == null ? null : change.previousId(),
-                FlowText.lines(model.flow(node.id())));
+                FlowText.lines(model.flow(node.id())), chart(model.flow(node.id())));
+    }
+
+    private static FlowChart chart(List<Step> flow) {
+        return flow.isEmpty() ? null : FlowChart.of(flow);
     }
 
     private static GraphEdge edge(Edge edge, Change change) {

@@ -52,7 +52,15 @@ body {
 }
 #controls { position: sticky; top: -12px; margin: -12px -12px 0; padding: 12px 12px 2px; background: var(--panel);
   border-bottom: 1px solid var(--border); z-index: 1; }
-#graph { flex: 1; min-width: 0; position: relative; }
+#stage { flex: 1; min-width: 0; position: relative; }
+#graph { position: absolute; inset: 0; }
+#chart { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--bg); z-index: 2; }
+#chart[hidden] { display: none; }
+#chart-bar { padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--panel); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
+#chart-title { font-weight: bold; margin-left: 8px; }
+#chart-graph { flex: 1; min-height: 0; }
+#details-chart { margin-bottom: 6px; }
 #message { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted);
   font-size: 14px; pointer-events: none; z-index: 1; }
 h1 { font-size: 15px; margin: 0 0 12px; word-break: break-all; }
