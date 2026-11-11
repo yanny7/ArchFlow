@@ -8,6 +8,7 @@
   --added: #1a7f37;
   --removed: #cf222e;
   --changed: #bc4c00;
+  --inside: #b08800;
   --node: #ffffff;
   --package: #eef0f3;
   --type: #e3eefb;
@@ -22,7 +23,8 @@
     --link: #589df6;
     --added: #57ab5a;
     --removed: #e5534b;
-    --changed: #d18616;
+    --changed: #db6d28;
+    --inside: #d4a72c;
     --node: #2f3237;
     --package: #33363c;
     --type: #25364a;
@@ -37,7 +39,8 @@
     --link: #589df6;
     --added: #57ab5a;
     --removed: #e5534b;
-    --changed: #d18616;
+    --changed: #db6d28;
+    --inside: #d4a72c;
     --node: #2f3237;
     --package: #33363c;
     --type: #25364a;
@@ -88,7 +91,8 @@ ol { list-style: none; margin: 0; padding: 0; }
 #changes li:hover { text-decoration: underline; }
 .added { color: var(--added); }
 .removed { color: var(--removed); }
-.changed, .inside { color: var(--changed); }
+.changed { color: var(--changed); }
+.inside { color: var(--inside); }
 #details-meta { color: var(--muted); margin-bottom: 6px; word-break: break-all; }
 #details-flow .line { color: var(--muted); display: inline-block; min-width: 3.5em; }
 a { color: var(--link); cursor: pointer; text-decoration: none; }
@@ -107,9 +111,9 @@ a:hover { text-decoration: underline; }
 .swatch .type { fill: var(--type); }
 .swatch .collapsed { stroke-width: 2; }
 .swatch .added { stroke: var(--added); stroke-width: 2.5; }
-.swatch .removed { stroke: var(--removed); stroke-width: 2.5; stroke-dasharray: 4 2; }
+.swatch .removed { stroke: var(--removed); stroke-width: 2.5; opacity: 0.6; }
 .swatch .changed { stroke: var(--changed); stroke-width: 2.5; }
-.swatch .inside { stroke: var(--changed); stroke-width: 2; stroke-dasharray: 4 2; }
+.swatch .inside { stroke: var(--inside); stroke-width: 2; }
 .swatch .link { stroke: var(--link); }
 .swatch .throw { stroke: var(--removed); }
 .swatch .arm { fill: var(--muted); font: italic 10px system-ui, sans-serif; text-anchor: middle; }
@@ -118,13 +122,13 @@ a:hover { text-decoration: underline; }
 .swatch.override line { stroke-dasharray: 1 3; stroke-linecap: round; }
 .swatch.override line + polygon { fill: none; stroke: var(--muted); }
 .swatch.dependency line { stroke-dasharray: 5 3; }
+.swatch.highlight, .swatch.chosen { filter: drop-shadow(0 0 2px var(--link)) drop-shadow(0 0 1px var(--link)); }
 .swatch.thick line { stroke-width: 4; }
 .swatch.faded { opacity: 0.3; }
-.swatch.highlight line { stroke: var(--link); }
-.swatch.highlight line + polygon { fill: var(--link); }
-.swatch.added line { stroke: var(--added); stroke-width: 2.5; }
+.swatch.added line { stroke: var(--added); }
 .swatch.added line + polygon { fill: var(--added); }
-.swatch.removed line { stroke: var(--removed); stroke-width: 2.5; stroke-dasharray: 5 3; }
+.swatch.removed line { stroke: var(--removed); }
 .swatch.removed line + polygon { fill: var(--removed); }
-.swatch.changed line { stroke: var(--changed); stroke-width: 2.5; }
+.swatch.changed line { stroke: var(--changed); }
 .swatch.changed line + polygon { fill: var(--changed); }
+#legend .legend-note { color: var(--muted); font-style: italic; }

@@ -49,19 +49,20 @@
     <div id="legend-graph">
     <h3>Nodes</h3>
     <ul>
-      <li><svg class="swatch" viewBox="0 0 40 16"><rect x="2" y="2" width="36" height="12" rx="4" class="package"/></svg>package</li>
+      <li><svg class="swatch" viewBox="0 0 40 16"><polygon points="6,2 34,2 38,6 38,10 34,14 6,14 2,10 2,6" class="package"/></svg>package</li>
       <li><svg class="swatch" viewBox="0 0 40 16"><rect x="2" y="2" width="36" height="12" rx="4" class="type"/></svg>type</li>
-      <li><svg class="swatch" viewBox="0 0 40 16"><rect x="2" y="2" width="36" height="12" rx="4" class=""/></svg>method</li>
+      <li><svg class="swatch" viewBox="0 0 40 16"><rect x="2" y="2" width="36" height="12" rx="6"/></svg>method</li>
       <li><svg class="swatch" viewBox="0 0 40 16"><rect x="2" y="2" width="36" height="12" rx="4" class="collapsed"/></svg>closed node: [n] children, double click opens it</li>
+      <li><svg class="swatch chosen" viewBox="0 0 40 16"><rect x="2" y="2" width="36" height="12" rx="4" class="type"/></svg>selected node, it pulses</li>
     </ul>
     <h3>Edges</h3>
     <ul>
-      <li><svg class="swatch " viewBox="0 0 40 16"><line x1="2" y1="8" x2="31" y2="8"/><polygon points="31,4 38,8 31,12"/></svg>call</li>
+      <li><svg class="swatch" viewBox="0 0 40 16"><line x1="2" y1="8" x2="31" y2="8"/><polygon points="31,4 38,8 31,12"/></svg>call</li>
       <li><svg class="swatch override" viewBox="0 0 40 16"><line x1="2" y1="8" x2="31" y2="8"/><polygon points="31,4 38,8 31,12"/></svg>implements or overrides</li>
-      <li><svg class="swatch dependency" viewBox="0 0 40 16"><line x1="2" y1="8" x2="31" y2="8"/><polygon points="31,4 38,8 31,12"/></svg>type uses type</li>
+      <li><svg class="swatch dependency" viewBox="0 0 40 16"><line x1="2" y1="8" x2="31" y2="8"/><polygon points="29,3 38,8 29,13 32,8"/></svg>type uses type</li>
       <li><svg class="swatch thick" viewBox="0 0 40 16"><line x1="2" y1="8" x2="31" y2="8"/><polygon points="31,4 38,8 31,12"/></svg>several edges merged into one</li>
       <li><svg class="swatch faded" viewBox="0 0 40 16"><line x1="2" y1="8" x2="31" y2="8"/><polygon points="31,4 38,8 31,12"/></svg>outside the last opened node</li>
-      <li><svg class="swatch highlight" viewBox="0 0 40 16"><line x1="2" y1="8" x2="31" y2="8"/><polygon points="31,4 38,8 31,12"/></svg>edge of the selected node</li>
+      <li><svg class="swatch highlight" viewBox="0 0 40 16"><line x1="2" y1="8" x2="31" y2="8"/><polygon points="31,4 38,8 31,12"/></svg>edge of the selected node, or of the picked change</li>
     </ul>
     <div id="legend-diff">
     <h3>Changes</h3>
@@ -70,6 +71,7 @@
       <li><svg class="swatch" viewBox="0 0 40 16"><rect x="2" y="2" width="36" height="12" rx="4" class="removed"/></svg>removed node</li>
       <li><svg class="swatch" viewBox="0 0 40 16"><rect x="2" y="2" width="36" height="12" rx="4" class="changed"/></svg>changed node</li>
       <li><svg class="swatch" viewBox="0 0 40 16"><rect x="2" y="2" width="36" height="12" rx="4" class="inside"/></svg>something inside changed</li>
+      <li class="legend-note">edges keep their pattern, the color tells the change</li>
       <li><svg class="swatch added" viewBox="0 0 40 16"><line x1="2" y1="8" x2="31" y2="8"/><polygon points="31,4 38,8 31,12"/></svg>added edge</li>
       <li><svg class="swatch removed" viewBox="0 0 40 16"><line x1="2" y1="8" x2="31" y2="8"/><polygon points="31,4 38,8 31,12"/></svg>removed edge</li>
       <li><svg class="swatch changed" viewBox="0 0 40 16"><line x1="2" y1="8" x2="31" y2="8"/><polygon points="31,4 38,8 31,12"/></svg>merged edges, some added, some removed</li>

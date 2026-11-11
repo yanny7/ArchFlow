@@ -7,9 +7,10 @@
     const FIT = {fit: true};
     const PADDING = 20;
     const FOCUS_ZOOM = 1.5;
-    const PULSE = {low: 0.08, high: 0.35, duration: 800};
+    const PULSE = {low: 0.1, high: 0.45, duration: 800};
     const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const TRAIL_LENGTH = 100;
+    const METHOD_RADIUS = 12;
     const TAP_DISTANCE = 4;
     const CHART_LABEL = 70;
     const CHART_ROW = 60;
@@ -348,7 +349,7 @@
     }
 
     function breathe(element, up, generation) {
-        element.animation({style: {'overlay-opacity': up ? PULSE.high : PULSE.low}, duration: PULSE.duration, easing: 'ease-in-out-sine'})
+        element.animation({style: {'underlay-opacity': up ? PULSE.high : PULSE.low}, duration: PULSE.duration, easing: 'ease-in-out-sine'})
             .play().promise('completed').then(() => {
                 if (pulse.generation === generation && !element.removed()) {
                     breathe(element, !up, generation);
@@ -360,7 +361,7 @@
         pulse.generation++;
         const alive = pulse.elements.filter(element => !element.removed());
         alive.stop(true);
-        alive.removeStyle('overlay-opacity');
+        alive.removeStyle('underlay-opacity');
         pulse.elements = cy.collection();
     }
 
@@ -643,9 +644,9 @@
                 'shape': 'round-rectangle', 'width': node => textWidth(node) + 12, 'height': node => fontSize(node) * 1.3 + 12,
                 'border-width': 1, 'border-color': border, 'background-color': color('--node')
             }},
-            {selector: 'node.package', style: {'background-color': color('--package')}},
+            {selector: 'node.package', style: {'background-color': color('--package'), 'shape': 'cut-rectangle'}},
             {selector: 'node.type', style: {'background-color': color('--type')}},
-            {selector: 'node.method', style: {'font-size': 10}},
+            {selector: 'node.method', style: {'font-size': 10, 'corner-radius': METHOD_RADIUS}},
             {selector: 'node', style: {'padding': '0px'}},
             {selector: 'node.collapsed', style: {'border-width': 2}},
             {selector: ':parent', style: {
@@ -653,22 +654,22 @@
                 'background-opacity': 0.5, 'font-weight': 'bold'
             }},
             {selector: 'node.added', style: {'border-color': color('--added'), 'border-width': 3}},
-            {selector: 'node.removed', style: {'border-color': color('--removed'), 'border-width': 3, 'border-style': 'dashed', 'opacity': 0.75}},
+            {selector: 'node.removed', style: {'border-color': color('--removed'), 'border-width': 3, 'opacity': 0.6}},
             {selector: 'node.changed', style: {'border-color': color('--changed'), 'border-width': 3}},
-            {selector: 'node.inside', style: {'border-color': color('--changed'), 'border-width': 2, 'border-style': 'dashed'}},
-            {selector: 'node.chosen', style: {'overlay-color': color('--link'), 'overlay-opacity': 0.15, 'overlay-padding': 4}},
+            {selector: 'node.inside', style: {'border-color': color('--inside'), 'border-width': 2}},
+            {selector: 'node.chosen', style: {'underlay-color': color('--link'), 'underlay-opacity': PULSE.low, 'underlay-padding': 6}},
             {selector: 'edge', style: {
                 'curve-style': 'bezier', 'width': 'data(width)', 'line-color': muted, 'target-arrow-color': muted,
                 'target-arrow-shape': 'triangle', 'arrow-scale': 0.8, 'opacity': 0.8
             }},
             {selector: 'edge.override', style: {'line-style': 'dotted', 'target-arrow-shape': 'triangle-backcurve', 'target-arrow-fill': 'hollow'}},
-            {selector: 'edge.dependency', style: {'line-style': 'dashed'}},
-            {selector: 'edge.added', style: {'line-color': color('--added'), 'target-arrow-color': color('--added'), 'width': 2.5}},
-            {selector: 'edge.removed', style: {'line-color': color('--removed'), 'target-arrow-color': color('--removed'), 'line-style': 'dashed', 'width': 2.5}},
-            {selector: 'edge.changed', style: {'line-color': color('--changed'), 'target-arrow-color': color('--changed'), 'width': 2.5}},
+            {selector: 'edge.dependency', style: {'line-style': 'dashed', 'target-arrow-shape': 'vee'}},
+            {selector: 'edge.added', style: {'line-color': color('--added'), 'target-arrow-color': color('--added')}},
+            {selector: 'edge.removed', style: {'line-color': color('--removed'), 'target-arrow-color': color('--removed')}},
+            {selector: 'edge.changed', style: {'line-color': color('--changed'), 'target-arrow-color': color('--changed')}},
             {selector: 'edge.background', style: {'opacity': 0.3, 'width': 1}},
-            {selector: 'edge.highlight', style: {'opacity': 1, 'z-compound-depth': 'top', 'line-color': color('--link'), 'target-arrow-color': color('--link'),
-                'overlay-color': color('--link'), 'overlay-padding': 4}}
+            {selector: 'edge.highlight', style: {'opacity': 1, 'z-compound-depth': 'top',
+                'underlay-color': color('--link'), 'underlay-opacity': PULSE.low, 'underlay-padding': 2}}
         ];
     }
 
