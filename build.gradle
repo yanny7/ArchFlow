@@ -1,8 +1,10 @@
+def commits = providers.exec { commandLine 'git', 'rev-list', '--count', 'HEAD' }.standardOutput.asText.get().trim()
+
 subprojects {
     apply plugin: 'java'
 
     group = 'com.yanny.archflow'
-    version = '0.1.0'
+    version = "0.1.${commits}"
 
     repositories {
         mavenCentral()

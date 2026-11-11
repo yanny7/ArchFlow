@@ -118,6 +118,9 @@ IntelliJ plugin. The pilot is ALI's graph analysis (`ali/common/.../plugin/serve
 - **Build:** a Gradle 9 wrapper, multi-module, with the IntelliJ Platform Gradle Plugin 2.x for `plugin`.
   `./gradlew :plugin:verifyPlugin` runs the Plugin Verifier against 2026.3; it is not part of `build` (its first run
   downloads about 1.3 GB).
+- **Version** is `0.1.<number of commits>`, so every commit gives the IDE a newer plugin.
+  `./gradlew :plugin:publishLocal` puts the plugin zip and `updatePlugins.xml` into `repository/` (ignored by git);
+  the IDE lists that file as a custom plugin repository and offers each newer build as an update.
 - **Libraries:** JavaParser (extraction), JGit (git), Gson (JSON), JUnit (tests), pinned in
   `gradle/libs.versions.toml`. Cytoscape.js with the ELK layout (viewer), bundled in `viewer` so the plugin works
   offline; their versions and licenses are listed next to them in `THIRD_PARTY.md`.

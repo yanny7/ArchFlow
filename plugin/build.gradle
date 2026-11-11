@@ -2,6 +2,9 @@ plugins {
     alias(libs.plugins.intellijPlatform)
 }
 
+def sinceBuild = '263'
+def repository = rootProject.layout.projectDirectory.dir('repository')
+
 repositories {
     intellijPlatform {
         defaultRepositories()
@@ -36,7 +39,25 @@ intellijPlatform {
 
     pluginConfiguration {
         ideaVersion {
-            sinceBuild = '263'
+            sinceBuild = sinceBuild
         }
+    }
+}
+
+tasks.register('publishLocal', Sync) {
+    group = 'distribution'
+    description = 'Publishes the plugin to the local plugin repository that the IDE reads for updates.'
+    def zipName = tasks.named('buildPlugin').flatMap { it.archiveFileName }
+    def pluginVersion = project.version.toString()
+    from tasks.named('buildPlugin')
+    into repository
+    doLast {
+        def zip = repository.file(zipName.get()).asFile
+        repository.file('updatePlugins.xml').asFile.text = """<plugins>
+  <plugin id="com.yanny.archflow" url="${zip.toPath().toUri()}" version="${pluginVersion}">
+    <idea-version since-build="${sinceBuild}"/>
+  </plugin>
+</plugins>
+"""
     }
 }
