@@ -84,6 +84,9 @@
         } else if ((event.ctrlKey || event.metaKey) && (key === 'z' || key === 'y')) {
             event.preventDefault();
             stepTrail(key === 'y' || event.shiftKey ? 1 : -1);
+        } else if (event.key === 'F4' && state.selected) {
+            event.preventDefault();
+            openSource();
         }
     });
     document.getElementById('view').addEventListener('change', event => showView(Number(event.target.value)));
@@ -467,7 +470,7 @@
         const count = places().length;
         button.hidden = !canOpen();
         button.disabled = count !== 1;
-        button.title = count > 1 ? 'Several places, pick one in the details or by right click' : 'Open in the editor (Ctrl+click)';
+        button.title = count > 1 ? 'Several places, pick one in the details or by right click' : 'Open in the editor (Ctrl+click or F4)';
     }
 
     function openMenu(element, position) {

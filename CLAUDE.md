@@ -107,9 +107,9 @@ codebase is ALI's graph analysis (`ali/common/.../plugin/server/graph`, branch `
   only by hidden tests is not marked.
 - Nodes cannot be dragged; a drag anywhere pans. Expanding keeps the zoom and holds the toggled node in place.
   Selections form a trail with undo and redo (buttons top right, Ctrl+Z, Ctrl+Shift+Z or Ctrl+Y).
-- Source: Ctrl+click or the Source button opens a node, or an edge with one place; a click on an edge lists its places
-  in the details; a right click offers places and node actions. A picked change of an edge selects both ends and draws
-  that edge even when its kind is switched off.
+- Source: Ctrl+click, F4 or the Source button opens a node, or an edge with one place; a click on an edge lists its
+  places in the details; a right click offers places and node actions. A picked change of an edge selects both ends
+  and draws that edge even when its kind is switched off.
 - A method opens as a flowchart over the graph (double click on a method without children, or the details button).
 - Layout: ELK lays out only the visible part, in a web worker (on the page's thread when no worker starts); a newer
   layout cancels an older one, and a render changes only the elements that appear or go. Any render of over 1000 nodes
