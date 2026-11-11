@@ -9,6 +9,8 @@
     const FOCUS_ZOOM = 1.5;
     const HALO = 0.25;
     const BORDER = {width: 2, chosen: 3, faint: 0.45};
+    // The label of a box is drawn above its bounds, so the box ELK places must also hold the labels of its children.
+    const BOX_PADDING = '[top=32,left=14,bottom=14,right=14]';
     const TRAIL_LENGTH = 100;
     const METHOD_RADIUS = 12;
     const TAP_DISTANCE = 4;
@@ -676,14 +678,14 @@
         update(elements);
         const layout = cy.layout({
             name: 'elk', nodeDimensionsIncludeLabels: false, fit: false, animate: false, useElkEdgeGeometry: true, elkEdgeRadius: 6,
+            nodeLayoutOptions: node => node.isParent() ? {'elk.padding': BOX_PADDING} : undefined,
             elk: {
                 'algorithm': 'layered',
                 'elk.direction': 'RIGHT',
                 'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
                 'elk.edgeRouting': 'ORTHOGONAL',
                 'elk.layered.spacing.nodeNodeBetweenLayers': 50,
-                'elk.spacing.nodeNode': 20,
-                'elk.padding': '[top=30,left=12,bottom=12,right=12]'
+                'elk.spacing.nodeNode': 20
             }
         });
         const current = ++layouts;
