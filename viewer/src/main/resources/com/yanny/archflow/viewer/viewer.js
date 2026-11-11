@@ -117,6 +117,10 @@
 
     window.archflowLoad = function (data) {
         window.archflowMessage(null);
+        const compared = data.beforeCommit + ' ' + data.commit;
+        if (data.beforeCommit && (!state.data || state.data.beforeCommit + ' ' + state.data.commit !== compared)) {
+            state.lens = 'review';
+        }
         state.data = data;
         document.getElementById('title').textContent = data.title;
         document.getElementById('legend-diff').hidden = !data.beforeCommit;

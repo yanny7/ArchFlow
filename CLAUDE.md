@@ -44,7 +44,7 @@ codebase is ALI's graph analysis (`ali/common/.../plugin/server/graph`, branch `
 - **Same input, same bytes.** A model is serialised in a stable order, so a model is cached by commit forever.
 - **Core computes, the viewer shows.** `core` computes every view, diff, flow, flowchart and place in the code, and is
   tested there. The viewer's own graph logic is only the mapping of edges to the nearest visible ancestors and the
-  visibility filters (focus, Review, Detail).
+  visibility filters (focus and Show).
 - **Bad architecture is raised, not worked around.** When code turns into spaghetti or a design costs time or memory,
   it is pointed out with a proposal before the work goes on.
 
@@ -98,9 +98,10 @@ codebase is ALI's graph analysis (`ali/common/.../plugin/server/graph`, branch `
   color only (node border, edge line), selection by a full border on nodes and a halo on edges. Unselected node
   borders are faint. A collapsed node shows `[n]` children. The legend explains every style.
 - The last expanded node is the focus: edges that neither start nor end inside it fade.
-- Show: Everything, Review (the changed nodes and the ends of changed edges, with their neighbours) or Detail (the
-  selection with its neighbours; picking a neighbour moves the centre). Neighbours are one edge away over the enabled
-  edge kinds; a selected box counts with everything inside it.
+- Show: Everything, Changes and neighbours (the changed nodes and the ends of changed edges) or Selection and
+  neighbours (picking a neighbour moves the centre). Neighbours are one edge away over the enabled edge kinds; a
+  selected box counts with everything inside it. Loading a diff of other commits than the shown ones switches to
+  Changes and neighbours.
 - Nodes cannot be dragged; a drag anywhere pans. Expanding keeps the zoom and holds the toggled node in place.
   Selections form a trail with undo and redo (buttons top right, Ctrl+Z, Ctrl+Shift+Z or Ctrl+Y).
 - Source: Ctrl+click or the Source button opens a node, or an edge with one place; a click on an edge lists its places
@@ -109,7 +110,7 @@ codebase is ALI's graph analysis (`ali/common/.../plugin/server/graph`, branch `
 - A method opens as a flowchart over the graph (double click on a method without children, or the details button).
 - Layout: ELK lays out only the visible part, in a web worker (on the page's thread when no worker starts); a newer
   layout cancels an older one, and a render changes only the elements that appear or go. Opening all changes, and a
-  Review or Detail of over 1000 nodes, asks first. Nothing animates continuously, since every frame redraws the whole
+  Show of over 1000 nodes, asks first. Nothing animates continuously, since every frame redraws the whole
   canvas.
 - The viewer has no automated tests; check it in a browser with a page from `archflow html`.
 

@@ -57,6 +57,7 @@ final class CommitPicker extends DropDownLink<CommitPicker.Choice> {
 
     void select(Choice choice) {
         setSelectedItem(choice);
+        setText(choice.label());
         setToolTipText(choice.description());
     }
 
