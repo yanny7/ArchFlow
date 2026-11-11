@@ -221,8 +221,14 @@
         const ends = [id, partner].filter(Boolean);
         ends.forEach(end => ancestors(end).forEach(ancestor => state.expanded.add(ancestor)));
         state.focus = parentOf(id);
+        state.selected = id;
+        state.partner = partner;
         render({center: ends});
         select(id, partner);
+    }
+
+    function isPicked(edge) {
+        return state.partner !== null && edge.from === state.selected && edge.to === state.partner;
     }
 
     function record(id, partner) {
@@ -279,7 +285,7 @@
         }
         const edges = new Map();
         for (const edge of state.graph.edges) {
-            if (!state.kinds.has(edge.kind)) {
+            if (!state.kinds.has(edge.kind) && !isPicked(edge)) {
                 continue;
             }
             const source = representative(edge.from);
@@ -296,7 +302,7 @@
             entry.changes.add(edge.change || 'same');
         }
         for (const [key, edge] of edges) {
-            elements.push({group: 'edges', data: {id: key, source: edge.source, target: edge.target, width: Math.min(1 + Math.log2(edge.count), 5)},
+            elements.push({group: 'edges', data: {id: key, kind: edge.kind, source: edge.source, target: edge.target, width: Math.min(1 + Math.log2(edge.count), 5)},
                 classes: [edge.kind, edgeChange(edge.changes), inFocus(edge) ? null : 'background'].filter(Boolean).join(' ')});
         }
         cy.batch(() => {
@@ -409,6 +415,7 @@
     function select(id, partner) {
         state.selected = id;
         state.partner = partner;
+        cy.edges().filter(edge => !state.kinds.has(edge.data('kind')) && !isPicked({from: edge.source().id(), to: edge.target().id()})).remove();
         cy.elements().removeClass('chosen');
         cy.edges().removeClass('highlight');
         highlightSelected();
