@@ -8,6 +8,9 @@
   --added: #1a7f37;
   --removed: #cf222e;
   --changed: #bc4c00;
+  --node: #ffffff;
+  --package: #eef0f3;
+  --type: #e3eefb;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -20,6 +23,9 @@
     --added: #57ab5a;
     --removed: #e5534b;
     --changed: #d18616;
+    --node: #2f3237;
+    --package: #33363c;
+    --type: #25364a;
   }
 }
 :root[data-theme="dark"] {
@@ -32,6 +38,9 @@
     --added: #57ab5a;
     --removed: #e5534b;
     --changed: #d18616;
+    --node: #2f3237;
+    --package: #33363c;
+    --type: #25364a;
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
@@ -83,3 +92,36 @@ ol { list-style: none; margin: 0; padding: 0; }
 #details-flow .line { color: var(--muted); display: inline-block; min-width: 3.5em; }
 a { color: var(--link); cursor: pointer; text-decoration: none; }
 a:hover { text-decoration: underline; }
+#legend { position: absolute; right: 12px; bottom: 12px; z-index: 3; max-height: calc(100% - 24px); overflow: auto;
+  padding: 6px 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; font-size: 12px; }
+#legend summary { cursor: pointer; font-weight: bold; }
+#legend h3 { font-size: 12px; margin: 8px 0 4px; }
+#legend ul { list-style: none; margin: 0; padding: 0; }
+#legend li { display: flex; align-items: center; gap: 8px; padding: 1px 0; white-space: nowrap; }
+.swatch { width: 40px; height: 16px; flex: none; }
+.swatch rect, .swatch ellipse, .swatch polygon { fill: var(--node); stroke: var(--border); stroke-width: 1; }
+.swatch .package { fill: var(--package); }
+.swatch .type { fill: var(--type); }
+.swatch .collapsed { stroke-width: 2; }
+.swatch .added { stroke: var(--added); stroke-width: 2.5; }
+.swatch .removed { stroke: var(--removed); stroke-width: 2.5; stroke-dasharray: 4 2; }
+.swatch .changed { stroke: var(--changed); stroke-width: 2.5; }
+.swatch .inside { stroke: var(--changed); stroke-width: 2; stroke-dasharray: 4 2; }
+.swatch .link { stroke: var(--link); }
+.swatch .throw { stroke: var(--removed); }
+.swatch .arm { fill: var(--muted); font: italic 10px system-ui, sans-serif; text-anchor: middle; }
+.swatch line { stroke: var(--muted); stroke-width: 1.5; }
+.swatch line + polygon { fill: var(--muted); stroke: none; }
+.swatch.override line { stroke-dasharray: 1 3; stroke-linecap: round; }
+.swatch.override line + polygon { fill: none; stroke: var(--muted); }
+.swatch.dependency line { stroke-dasharray: 5 3; }
+.swatch.thick line { stroke-width: 4; }
+.swatch.faded { opacity: 0.3; }
+.swatch.highlight line { stroke: var(--link); }
+.swatch.highlight line + polygon { fill: var(--link); }
+.swatch.added line { stroke: var(--added); stroke-width: 2.5; }
+.swatch.added line + polygon { fill: var(--added); }
+.swatch.removed line { stroke: var(--removed); stroke-width: 2.5; stroke-dasharray: 5 3; }
+.swatch.removed line + polygon { fill: var(--removed); }
+.swatch.changed line { stroke: var(--changed); stroke-width: 2.5; }
+.swatch.changed line + polygon { fill: var(--changed); }

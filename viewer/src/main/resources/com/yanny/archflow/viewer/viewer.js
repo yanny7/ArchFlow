@@ -61,6 +61,7 @@
         window.archflowMessage(null);
         state.data = data;
         document.getElementById('title').textContent = data.title;
+        document.getElementById('legend-diff').hidden = !data.beforeCommit;
         document.title = 'Archflow: ' + data.title;
         const select = document.getElementById('view');
         select.replaceChildren(...data.views.map((view, index) => new Option(VIEW_LABELS[view.view] || view.view, index)));
@@ -359,6 +360,7 @@
         }
         chart.id = id;
         document.getElementById('chart').hidden = false;
+        showLegend(true);
         document.getElementById('chart-title').textContent = short(node.id);
         if (!chart.cy) {
             chart.cy = cytoscape({container: document.getElementById('chart-graph'), style: chartStyles()});
@@ -408,6 +410,12 @@
     function closeChart() {
         chart.id = null;
         document.getElementById('chart').hidden = true;
+        showLegend(false);
+    }
+
+    function showLegend(forChart) {
+        document.getElementById('legend-graph').hidden = forChart;
+        document.getElementById('legend-chart').hidden = !forChart;
     }
 
     function boxLabel(box) {
@@ -464,26 +472,22 @@
 
     function palette() {
         const css = getComputedStyle(document.documentElement);
-        const theme = document.documentElement.dataset.theme;
-        return {
-            color: name => css.getPropertyValue(name).trim(),
-            dark: theme ? theme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches
-        };
+        return name => css.getPropertyValue(name).trim();
     }
 
     function chartStyles() {
-        const {color, dark} = palette();
+        const color = palette();
         return [
             {selector: 'node', style: {
                 'label': 'data(label)', 'font-size': 11, 'color': color('--text'), 'text-valign': 'center', 'text-halign': 'center',
                 'shape': 'round-rectangle', 'width': node => textWidth(node) + 16, 'height': 26, 'padding': '0px',
-                'border-width': 1, 'border-color': color('--border'), 'background-color': dark ? '#2f3237' : '#ffffff'
+                'border-width': 1, 'border-color': color('--border'), 'background-color': color('--node')
             }},
             {selector: 'node.start, node.end', style: {'shape': 'ellipse', 'width': node => textWidth(node) + 30, 'color': color('--muted')}},
             {selector: 'node.branch', style: {'shape': 'diamond', 'width': node => textWidth(node) + 50, 'height': 40,
-                'background-color': dark ? '#25364a' : '#e3eefb'}},
+                'background-color': color('--type')}},
             {selector: 'node.arm', style: {'background-opacity': 0, 'border-width': 0, 'font-style': 'italic', 'color': color('--muted')}},
-            {selector: 'node.loop', style: {'shape': 'hexagon', 'width': node => textWidth(node) + 50, 'background-color': dark ? '#33363c' : '#eef0f3'}},
+            {selector: 'node.loop', style: {'shape': 'hexagon', 'width': node => textWidth(node) + 50, 'background-color': color('--package')}},
             {selector: 'node.call', style: {'color': color('--muted')}},
             {selector: 'node.call.link', style: {'color': color('--link'), 'border-color': color('--link')}},
             {selector: 'node.return', style: {'color': color('--muted')}},
@@ -496,7 +500,7 @@
     }
 
     function styles() {
-        const {color, dark} = palette();
+        const color = palette();
         const text = color('--text');
         const muted = color('--muted');
         const border = color('--border');
@@ -504,10 +508,10 @@
             {selector: 'node', style: {
                 'label': 'data(label)', 'font-size': 11, 'color': text, 'text-valign': 'center', 'text-halign': 'center',
                 'shape': 'round-rectangle', 'width': node => textWidth(node) + 12, 'height': node => fontSize(node) * 1.3 + 12,
-                'border-width': 1, 'border-color': border, 'background-color': dark ? '#2f3237' : '#ffffff'
+                'border-width': 1, 'border-color': border, 'background-color': color('--node')
             }},
-            {selector: 'node.package', style: {'background-color': dark ? '#33363c' : '#eef0f3'}},
-            {selector: 'node.type', style: {'background-color': dark ? '#25364a' : '#e3eefb'}},
+            {selector: 'node.package', style: {'background-color': color('--package')}},
+            {selector: 'node.type', style: {'background-color': color('--type')}},
             {selector: 'node.method', style: {'font-size': 10}},
             {selector: 'node', style: {'padding': '0px'}},
             {selector: 'node.collapsed', style: {'border-width': 2}},
