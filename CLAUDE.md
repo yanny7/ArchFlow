@@ -113,6 +113,8 @@ codebase is ALI's graph analysis (`ali/common/.../plugin/server/graph`, branch `
   (Everything with many boxes open, Open changes, Show) asks first; a loaded diff whose Changes and neighbours would
   exceed it opens on Everything and offers it. Nothing animates continuously, since every frame redraws the whole
   canvas.
+- Cytoscape's style cache is cleared only for the restyled element and its edges (`cheapStyleCache`), so a style on a
+  box must never change what its contents inherit (visibility, opacity, display).
 - The viewer has no automated tests; check it in a browser with a page from `archflow html`.
 
 ## Plugin

@@ -30,6 +30,7 @@
     const state = {data: null, graph: null, byId: new Map(), children: new Map(), expanded: new Set(), kinds: new Set(), selected: null, partner: null, change: false, focus: null, lens: 'all', shown: null};
     const measure = document.createElement('canvas').getContext('2d');
     const cy = cytoscape({container: document.getElementById('graph'), style: styles(), autoungrabify: true, autounselectify: true});
+    cheapStyleCache();
     const chart = {cy: null, id: null};
     const trail = {entries: [], index: -1};
     let pendingReveal = null;
@@ -581,6 +582,22 @@
         }
         state.expanded = opened;
         render(FIT, true);
+    }
+
+    function cheapStyleCache() {
+        const clear = element => {
+            element._private.styleCache = null;
+        };
+        // Cytoscape clears it for every descendant and parent per applied property: minutes for thousands of boxes.
+        Object.getPrototypeOf(cy.collection()).dirtyStyleCache = function () {
+            this.forEach(element => {
+                clear(element);
+                if (element.isNode()) {
+                    element.connectedEdges().forEach(clear);
+                }
+            });
+            return this;
+        };
     }
 
     function startElkWorker() {
