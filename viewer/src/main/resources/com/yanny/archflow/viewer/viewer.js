@@ -25,12 +25,13 @@
     const elkWorker = startElkWorker();
     let layouts = 0;
 
-    const state = {data: null, graph: null, byId: new Map(), children: new Map(), expanded: new Set(), kinds: new Set(), selected: null, partner: null, change: false, focus: null};
+    const state = {data: null, graph: null, byId: new Map(), children: new Map(), expanded: new Set(), kinds: new Set(), selected: null, partner: null, change: false, focus: null, lens: 'all', shown: null};
     const measure = document.createElement('canvas').getContext('2d');
     const cy = cytoscape({container: document.getElementById('graph'), style: styles(), autoungrabify: true, autounselectify: true});
     const chart = {cy: null, id: null};
     const trail = {entries: [], index: -1};
     let pendingReveal = null;
+    let warned = null;
 
     const graphDrag = panOnDrag(cy);
     cy.on('tap', 'node, edge', event => {
@@ -84,7 +85,12 @@
     });
     document.getElementById('view').addEventListener('change', event => showView(Number(event.target.value)));
     document.getElementById('expand-changes').addEventListener('click', () => expandChanges(false));
-    document.getElementById('open-anyway').addEventListener('click', () => expandChanges(true));
+    document.getElementById('open-anyway').addEventListener('click', () => {
+        const action = warned;
+        hideWarning();
+        action();
+    });
+    document.getElementById('lens').addEventListener('change', event => setLens(event.target.value));
     document.getElementById('collapse').addEventListener('click', () => {
         state.expanded.clear();
         state.focus = null;
@@ -168,6 +174,8 @@
         }
         renderKinds();
         renderChanges();
+        renderLens();
+        applyLens(true);
         cy.elements().remove();
         render(FIT);
         select(state.byId.has(state.selected) ? state.selected : null, state.byId.has(state.partner) ? state.partner : null, state.change);
@@ -273,7 +281,93 @@
         const id = element.isEdge() ? element.source().id() : element.id();
         const partner = element.isEdge() ? element.target().id() : null;
         record(id, partner, false);
-        select(id, partner, false);
+        if (state.lens === 'detail') {
+            reveal(id, partner, false);
+        } else {
+            select(id, partner, false);
+        }
+    }
+
+    function setLens(lens) {
+        const previous = state.lens;
+        state.lens = lens;
+        if (!applyLens(false)) {
+            state.lens = previous;
+            renderLens();
+            return;
+        }
+        render(FIT);
+    }
+
+    function renderLens() {
+        const picker = document.getElementById('lens');
+        const review = picker.querySelector('option[value="review"]');
+        review.disabled = state.graph.changes.length === 0;
+        if (review.disabled && state.lens === 'review') {
+            state.lens = 'all';
+        }
+        picker.value = state.lens;
+    }
+
+    function applyLens(confirmed) {
+        const shown = lensNodes();
+        if (shown && shown.size > OPEN_LIMIT && !confirmed) {
+            const lens = state.lens;
+            warn('This view shows ' + shown.size + ' nodes, the layout may take a while.', () => {
+                state.lens = lens;
+                renderLens();
+                applyLens(true);
+                render(FIT);
+            });
+            return false;
+        }
+        state.shown = shown;
+        if (shown) {
+            shown.forEach(id => ancestors(id).forEach(ancestor => state.expanded.add(ancestor)));
+        }
+        return true;
+    }
+
+    function lensNodes() {
+        const core = new Set();
+        if (state.lens === 'review') {
+            state.graph.nodes.filter(node => node.change && node.change !== 'inside').forEach(node => core.add(node.id));
+            state.graph.edges.filter(edge => edge.change && state.kinds.has(edge.kind)).forEach(edge => {
+                core.add(edge.from);
+                core.add(edge.to);
+            });
+        } else if (state.lens === 'detail' && state.selected) {
+            [state.selected, state.partner].filter(Boolean).forEach(id => core.add(id));
+        } else {
+            return null;
+        }
+        const inCore = id => core.has(id) || ancestors(id).some(ancestor => core.has(ancestor));
+        const shown = new Set(state.graph.nodes.filter(node => inCore(node.id)).map(node => node.id));
+        for (const edge of state.graph.edges) {
+            if (state.kinds.has(edge.kind) && inCore(edge.from)) {
+                shown.add(edge.to);
+            }
+            if (state.kinds.has(edge.kind) && inCore(edge.to)) {
+                shown.add(edge.from);
+            }
+        }
+        [...shown].forEach(id => ancestors(id).forEach(ancestor => shown.add(ancestor)));
+        return shown;
+    }
+
+    function isShown(id) {
+        return !state.shown || state.shown.has(id);
+    }
+
+    function warn(text, action) {
+        warned = action;
+        document.getElementById('open-warning-text').textContent = text;
+        document.getElementById('open-warning').hidden = false;
+    }
+
+    function hideWarning() {
+        warned = null;
+        document.getElementById('open-warning').hidden = true;
     }
 
     function pickedEdges() {
@@ -408,14 +502,15 @@
 
     function reveal(id, partner, change) {
         const ends = [id, partner].filter(Boolean);
-        const closed = ends.flatMap(ancestors).filter(ancestor => !state.expanded.has(ancestor));
         state.selected = id;
         state.partner = partner;
         state.change = change;
-        if (closed.length > 0 || change) {
+        const recentred = state.lens === 'detail' && applyLens(false);
+        const closed = ends.flatMap(ancestors).filter(ancestor => !state.expanded.has(ancestor));
+        if (closed.length > 0 || change || recentred) {
             closed.forEach(ancestor => state.expanded.add(ancestor));
             state.focus = parentOf(id);
-            render({center: ends});
+            render(recentred ? FIT : {center: ends});
         } else {
             zoomTo(ends.reduce((collection, end) => collection.union(cy.getElementById(end)), cy.collection()));
         }
@@ -465,13 +560,11 @@
             }
         }
         const visible = state.graph.nodes.filter(node => ancestors(node.id).every(ancestor => opened.has(ancestor))).length;
-        const warning = document.getElementById('open-warning');
         if (visible > OPEN_LIMIT && confirmed !== true) {
-            document.getElementById('open-warning-text').textContent = 'Opening all changes shows ' + visible + ' nodes, the layout may take a while.';
-            warning.hidden = false;
+            warn('Opening all changes shows ' + visible + ' nodes, the layout may take a while.', () => expandChanges(true));
             return;
         }
-        warning.hidden = true;
+        hideWarning();
         state.expanded = opened;
         render(FIT);
     }
@@ -547,10 +640,11 @@
         const previous = new Map(cy.nodes().map(node => [node.id(), {...node.position()}]));
         const elements = new Map();
         for (const node of state.graph.nodes) {
-            if (isVisible(node.id)) {
-                const collapsed = state.children.has(node.id) && !state.expanded.has(node.id);
+            if (isShown(node.id) && isVisible(node.id)) {
+                const children = (state.children.get(node.id) || []).filter(isShown);
+                const collapsed = children.length > 0 && !state.expanded.has(node.id);
                 const classes = [node.kind, node.change].filter(Boolean).join(' ');
-                const text = label(node) + (collapsed ? ' [' + state.children.get(node.id).length + ']' : '');
+                const text = label(node) + (collapsed ? ' [' + children.length + ']' : '');
                 const size = node.kind === 'method' ? FONT.method : FONT.other;
                 const from = [node.id, ...ancestors(node.id).reverse()].find(id => previous.has(id));
                 elements.set(node.id, {group: 'nodes', classes, position: from ? {...previous.get(from)} : {x: 0, y: 0},
@@ -559,7 +653,7 @@
         }
         const edges = new Map();
         for (const edge of state.graph.edges) {
-            if (!state.kinds.has(edge.kind) && !isPicked(edge)) {
+            if ((!state.kinds.has(edge.kind) && !isPicked(edge)) || !isShown(edge.from) || !isShown(edge.to)) {
                 continue;
             }
             const source = representative(edge.from);
@@ -880,6 +974,7 @@
                 } else {
                     state.kinds.delete(kind);
                 }
+                applyLens(true);
                 render();
             });
             const labelElement = document.createElement('label');
