@@ -17,6 +17,7 @@ public final class ArchflowSettings implements PersistentStateComponent<Archflow
         public List<String> paths = new ArrayList<>();
         public int minLines = ViewOptions.DEFAULT.minLines();
         public boolean followCaret;
+        public boolean singleCommit;
     }
 
     private Data data = new Data();

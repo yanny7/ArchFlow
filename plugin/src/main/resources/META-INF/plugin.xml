@@ -5,6 +5,7 @@
     <description>Shows the architecture of a Java codebase as one graph with levels, and how it changed between commits.</description>
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.jcef</depends>
+    <depends>com.intellij.modules.vcs</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow id="Archflow" anchor="bottom" icon="AllIcons.Toolwindows.ToolWindowHierarchy"
@@ -15,6 +16,10 @@
         <action id="Archflow.ShowInArchflow" class="com.yanny.archflow.plugin.ShowInArchflowAction" text="Show in Archflow"
                 description="Selects in the Archflow graph what the caret is on: an edge whose place is this line, or the innermost node">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+        <action id="Archflow.ShowCommits" class="com.yanny.archflow.plugin.ShowCommitsInArchflowAction" text="Show in Archflow"
+                description="Shows in Archflow how one commit changed the architecture, or how it changed from the oldest to the newest selected commit">
+            <add-to-group group-id="Vcs.Log.ContextMenu" anchor="last"/>
         </action>
     </actions>
 </idea-plugin>

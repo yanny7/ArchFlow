@@ -115,8 +115,13 @@ codebase is ALI's graph analysis (`ali/common/.../plugin/server/graph`, branch `
 
 ## Plugin
 
-- A tool window shows the viewer page in JCEF (the bundled plugin `com.intellij.modules.jcef`) with a toolbar: From
-  (none or a commit), To (working copy or a commit), source path prefixes, `minLines`, Show and Follow caret.
+- A tool window shows the viewer page in JCEF (the bundled plugin `com.intellij.modules.jcef`) with a toolbar: Single
+  commit, From (none or a commit), To (working copy or a commit), source path prefixes, `minLines`, Show and Follow
+  caret. Single commit hides From and compares To with its first parent, or the working copy with HEAD.
+- A commit is picked from a popup that searches every commit reachable from HEAD by hash prefix and message, loads
+  them a page at a time as the list scrolls, and also accepts any revision git resolves (branch, tag, `HEAD~3`).
+- "Show in Archflow" in the VCS log's context menu (the bundled plugin `com.intellij.modules.vcs`) shows one selected
+  commit as a single commit, and several as the range from the lowest selected row to the highest.
 - `archflowOpen` opens the working copy's file, or a read-only copy of the commit's version; a removed node or edge
   opens from the From commit.
 - With To on the working copy, a saved `.java` file under the project rebuilds the model after 1.5 s.

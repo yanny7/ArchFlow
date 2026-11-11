@@ -22,6 +22,8 @@ dependencies {
     intellijPlatform {
         intellijIdea '2026.3'
         bundledPlugin 'com.intellij.modules.jcef'
+        bundledPlugin 'com.intellij.platform.vcs'
+        bundledModule 'intellij.platform.vcs.shared'
         bundledModule 'intellij.platform.ui.jcef'
         bundledModule 'intellij.libraries.jcef'
     }

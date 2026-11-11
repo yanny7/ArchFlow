@@ -43,7 +43,7 @@ class ModelSourceTest {
                 assertEquals(List.of(second), git.range(first, second));
                 assertEquals(first, git.parent(second));
                 assertEquals(List.of(new GitRepo.CommitInfo(second, "second"), new GitRepo.CommitInfo(first, "first")),
-                        git.history("main", 10));
+                        git.history("main", "", 0, 10));
                 assertEquals("package a;\nclass A {\n}\n", git.fileAt(first, "src/a/A.java"));
             }
         }

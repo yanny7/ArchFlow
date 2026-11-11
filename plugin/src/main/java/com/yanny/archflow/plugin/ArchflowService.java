@@ -16,10 +16,11 @@ import java.util.List;
 
 @Service(Service.Level.PROJECT)
 public final class ArchflowService implements Disposable {
-    public record Selection(String from, String to, List<String> paths, int minLines) {
+    public record Selection(String from, String to, boolean single, List<String> paths, int minLines) {
     }
 
     private final Project project;
+    private final Object gitLock = new Object();
     private GitRepo git;
     private ModelSource source;
     private List<String> sourcePaths;
@@ -32,22 +33,29 @@ public final class ArchflowService implements Disposable {
         return project.getService(ArchflowService.class);
     }
 
-    public synchronized GitRepo git() throws IOException {
-        if (git == null) {
-            String base = project.getBasePath();
-            if (base == null) {
-                throw new IOException("The project has no directory");
+    public GitRepo git() throws IOException {
+        synchronized (gitLock) {
+            if (git == null) {
+                String base = project.getBasePath();
+                if (base == null) {
+                    throw new IOException("The project has no directory");
+                }
+                git = new GitRepo(Path.of(base));
             }
-            git = new GitRepo(Path.of(base));
+            return git;
         }
-        return git;
     }
 
-    public synchronized List<GitRepo.CommitInfo> history(int limit) throws IOException {
-        return git().history("HEAD", limit);
+    public List<GitRepo.CommitInfo> history(String query, int skip, int limit) throws IOException {
+        return git().history("HEAD", query, skip, limit);
     }
 
-    public synchronized String fileAt(String commit, String path) throws IOException {
+    public GitRepo.CommitInfo commit(String revision) throws IOException {
+        String id = git().resolve(revision);
+        return new GitRepo.CommitInfo(id, git().message(id));
+    }
+
+    public String fileAt(String commit, String path) throws IOException {
         return git().fileAt(commit, path);
     }
 
@@ -55,12 +63,19 @@ public final class ArchflowService implements Disposable {
         ModelSource models = source(selection.paths());
         String afterCommit = selection.to() == null ? null : git().resolve(selection.to());
         Model after = afterCommit == null ? models.workingCopy() : models.commit(afterCommit);
-        String beforeCommit = selection.from() == null ? null : git().resolve(selection.from());
+        String beforeCommit = before(selection, afterCommit);
         Model before = beforeCommit == null ? null : models.commit(beforeCommit);
         String title = project.getName() + " " + (beforeCommit == null ? "" : shortId(beforeCommit) + " → ")
                 + (afterCommit == null ? "working copy" : shortId(afterCommit));
         ViewOptions options = ViewOptions.DEFAULT.withMinLines(selection.minLines());
         return ViewerData.json(ViewerData.data(title, beforeCommit, before, afterCommit, after, options));
+    }
+
+    private String before(Selection selection, String afterCommit) throws IOException {
+        if (selection.single()) {
+            return afterCommit == null ? git().resolve("HEAD") : git().parent(afterCommit);
+        }
+        return selection.from() == null ? null : git().resolve(selection.from());
     }
 
     static String shortId(String commit) {
@@ -76,9 +91,11 @@ public final class ArchflowService implements Disposable {
     }
 
     @Override
-    public synchronized void dispose() {
-        if (git != null) {
-            git.close();
+    public void dispose() {
+        synchronized (gitLock) {
+            if (git != null) {
+                git.close();
+            }
         }
     }
 }

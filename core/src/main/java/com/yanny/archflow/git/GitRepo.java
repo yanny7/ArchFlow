@@ -23,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public final class GitRepo implements AutoCloseable {
     public record CommitInfo(String id, String message) {
@@ -59,16 +60,20 @@ public final class GitRepo implements AutoCloseable {
         return repository.getWorkTree().toPath();
     }
 
-    public List<CommitInfo> history(String start, int limit) throws IOException {
+    public List<CommitInfo> history(String start, String query, int skip, int limit) throws IOException {
+        String needle = query.toLowerCase(Locale.ROOT);
         List<CommitInfo> commits = new ArrayList<>();
+        int matched = 0;
         try (RevWalk walk = new RevWalk(repository)) {
-            walk.setFirstParent(true);
             walk.markStart(walk.parseCommit(ObjectId.fromString(resolve(start))));
             for (RevCommit commit : walk) {
                 if (commits.size() == limit) {
                     break;
                 }
-                commits.add(new CommitInfo(commit.name(), commit.getShortMessage()));
+                boolean matches = commit.name().startsWith(needle) || commit.getFullMessage().toLowerCase(Locale.ROOT).contains(needle);
+                if (matches && matched++ >= skip) {
+                    commits.add(new CommitInfo(commit.name(), commit.getShortMessage()));
+                }
             }
         }
         return commits;

@@ -12,7 +12,6 @@ import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.text.StringUtil;
@@ -21,7 +20,6 @@ import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.openapi.vfs.newvfs.BulkFileListener;
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent;
 import com.intellij.ui.JBColor;
-import com.intellij.ui.SimpleListCellRenderer;
 import com.intellij.ui.components.JBCheckBox;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBTextField;
@@ -30,14 +28,12 @@ import com.intellij.ui.jcef.JBCefBrowserBase;
 import com.intellij.ui.jcef.JBCefJSQuery;
 import com.intellij.util.Alarm;
 import com.intellij.util.ui.WrapLayout;
-import com.yanny.archflow.git.GitRepo;
 import com.yanny.archflow.viewer.ViewerPage;
 import org.cef.browser.CefBrowser;
 import org.cef.browser.CefFrame;
 import org.cef.handler.CefLoadHandlerAdapter;
 
 import javax.swing.JButton;
-import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
@@ -50,25 +46,18 @@ import java.util.Arrays;
 import java.util.List;
 
 final class ArchflowPanel extends JPanel implements Disposable {
-    private record Choice(String revision, String label, String description) {
-        @Override
-        public String toString() {
-            return label;
-        }
-    }
-
-    private static final Choice NONE = new Choice(null, "None", "None");
-    private static final Choice WORKING_COPY = new Choice(null, "Working copy", "Working copy");
-    private static final int HISTORY = 100;
+    private static final CommitPicker.Choice NONE = new CommitPicker.Choice(null, "None", "None");
+    private static final CommitPicker.Choice WORKING_COPY = new CommitPicker.Choice(null, "Working copy", "Working copy");
     private static final int REFRESH_DELAY_MS = 1500;
-    private static final int LABEL_LENGTH = 50;
     private static final int FOLLOW_DELAY_MS = 300;
 
     private final Project project;
     private final JBCefBrowser browser = new JBCefBrowser();
     private final JBCefJSQuery openQuery;
-    private final ComboBox<Choice> from = new ComboBox<>();
-    private final ComboBox<Choice> to = new ComboBox<>();
+    private final CommitPicker from;
+    private final CommitPicker to;
+    private final JBLabel fromLabel = new JBLabel("From");
+    private final JBCheckBox single = new JBCheckBox("Single commit");
     private final JBTextField paths = new JBTextField(30);
     private final JSpinner minLines = new JSpinner(new SpinnerNumberModel(10, 1, 1000, 1));
     private final JBCheckBox follow = new JBCheckBox("Follow caret");
@@ -103,25 +92,23 @@ final class ArchflowPanel extends JPanel implements Disposable {
         minLines.setValue(settings.minLines);
         follow.setSelected(settings.followCaret);
         follow.addActionListener(event -> ArchflowSettings.of(project).getState().followCaret = follow.isSelected());
-        from.addItem(NONE);
-        to.addItem(WORKING_COPY);
+        from = new CommitPicker(project, NONE, choice -> rebuild());
+        to = new CommitPicker(project, WORKING_COPY, choice -> rebuild());
+        single.setToolTipText("Shows the changes of the To commit, or of the working copy against HEAD");
+        single.setSelected(settings.singleCommit);
+        single.addActionListener(event -> {
+            ArchflowSettings.of(project).getState().singleCommit = single.isSelected();
+            showFrom();
+            rebuild();
+        });
+        showFrom();
         JButton show = new JButton("Show");
         show.addActionListener(event -> rebuild());
         paths.addActionListener(event -> rebuild());
-        for (ComboBox<Choice> combo : List.of(from, to)) {
-            combo.setSwingPopup(false);
-            combo.setRenderer(new SimpleListCellRenderer<>() {
-                @Override
-                public void customize(JList<? extends Choice> list, Choice value, int index, boolean selected, boolean focus) {
-                    if (value != null) {
-                        setText(index < 0 ? value.label() : value.description());
-                    }
-                }
-            });
-            combo.addActionListener(event -> combo.setToolTipText(description(combo)));
-        }
+        minLines.addChangeListener(event -> rebuild());
         JPanel toolbar = new JPanel(new WrapLayout(FlowLayout.LEFT));
-        toolbar.add(new JBLabel("From"));
+        toolbar.add(single);
+        toolbar.add(fromLabel);
         toolbar.add(from);
         toolbar.add(new JBLabel("To"));
         toolbar.add(to);
@@ -161,47 +148,42 @@ final class ArchflowPanel extends JPanel implements Disposable {
                 }
             }
         }, this);
-        loadHistory();
+        rebuild();
     }
 
-    private void loadHistory() {
+    void showCommits(String fromRevision, String toRevision) {
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            List<GitRepo.CommitInfo> commits;
             try {
-                commits = ArchflowService.of(project).history(HISTORY);
-            } catch (Exception e) {
+                ArchflowService service = ArchflowService.of(project);
+                CommitPicker.Choice toChoice = CommitPicker.Choice.of(service.commit(toRevision));
+                CommitPicker.Choice fromChoice = fromRevision == null ? null : CommitPicker.Choice.of(service.commit(fromRevision));
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    to.select(toChoice);
+                    single.setSelected(fromChoice == null);
+                    ArchflowSettings.of(project).getState().singleCommit = fromChoice == null;
+                    if (fromChoice != null) {
+                        from.select(fromChoice);
+                    }
+                    showFrom();
+                    rebuild();
+                }, project.getDisposed());
+            } catch (IOException e) {
                 deliver(message("Archflow cannot read git: " + e.getMessage()));
-                return;
             }
-            ApplicationManager.getApplication().invokeLater(() -> {
-                for (GitRepo.CommitInfo commit : commits) {
-                    String id = ArchflowService.shortId(commit.id()) + " ";
-                    String label = id + StringUtil.shortenTextWithEllipsis(commit.message(), LABEL_LENGTH, 0);
-                    Choice choice = new Choice(commit.id(), label, id + commit.message());
-                    from.addItem(choice);
-                    to.addItem(choice);
-                }
-                from.addActionListener(event -> rebuild());
-                to.addActionListener(event -> rebuild());
-                minLines.addChangeListener(event -> rebuild());
-                rebuild();
-            }, project.getDisposed());
         });
     }
 
-    private static String description(ComboBox<Choice> combo) {
-        return combo.getSelectedItem() instanceof Choice choice ? choice.description() : null;
+    private void showFrom() {
+        fromLabel.setVisible(!single.isSelected());
+        from.setVisible(!single.isSelected());
     }
 
     private void rebuild() {
         ArchflowSettings.Data settings = ArchflowSettings.of(project).getState();
         settings.paths = Arrays.stream(paths.getText().split(",")).map(String::trim).filter(path -> !path.isEmpty()).toList();
         settings.minLines = (Integer) minLines.getValue();
-        Choice fromChoice = (Choice) from.getSelectedItem();
-        Choice toChoice = (Choice) to.getSelectedItem();
-        ArchflowService.Selection selection = new ArchflowService.Selection(
-                fromChoice == null ? null : fromChoice.revision(), toChoice == null ? null : toChoice.revision(),
-                settings.paths, settings.minLines);
+        ArchflowService.Selection selection = new ArchflowService.Selection(from.getSelectedItem().revision(),
+                to.getSelectedItem().revision(), single.isSelected(), settings.paths, settings.minLines);
         deliver(message("Building the model…"));
         new Task.Backgroundable(project, "Building the architecture model", false) {
             @Override
@@ -219,8 +201,7 @@ final class ArchflowPanel extends JPanel implements Disposable {
         if (file == null || !file.isInLocalFileSystem()) {
             return;
         }
-        Choice toChoice = (Choice) to.getSelectedItem();
-        String commit = toChoice == null ? null : toChoice.revision();
+        String commit = to.getSelectedItem().revision();
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             try {
                 Path root = ArchflowService.of(project).git().workTree();
