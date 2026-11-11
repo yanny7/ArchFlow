@@ -6,6 +6,9 @@
     const DEFAULT_KINDS = {'outline': ['call', 'override'], 'all-functions': ['call', 'override'], 'dependencies': ['dependency']};
     const FIT = {fit: true};
     const PADDING = 20;
+    const FOCUS_ZOOM = 1.5;
+    const PULSE = {low: 0.08, high: 0.35, duration: 800};
+    const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const CHART_LABEL = 70;
     const CHART_ROW = 60;
     const CHART_ZOOM = {min: 0.7, max: 1.5};
@@ -16,6 +19,7 @@
     const measure = document.createElement('canvas').getContext('2d');
     const cy = cytoscape({container: document.getElementById('graph'), style: styles()});
     const chart = {cy: null, id: null};
+    const pulse = {element: null, animation: null};
 
     cy.on('tap', 'node', event => select(event.target.id()));
     cy.on('dbltap', 'node', event => {
@@ -237,10 +241,42 @@
         });
         layout.one('layoutstop', () => keepViewport(keep, before));
         layout.run();
-        if (state.selected && cy.getElementById(state.selected).nonempty()) {
-            cy.getElementById(state.selected).select();
-            cy.getElementById(state.selected).connectedEdges().addClass('highlight');
+        highlightSelected();
+    }
+
+    function highlightSelected() {
+        stopPulse();
+        const element = state.selected ? cy.getElementById(state.selected) : cy.collection();
+        if (element.empty()) {
+            return;
         }
+        element.select();
+        element.connectedEdges().addClass('highlight');
+        if (!REDUCED_MOTION) {
+            startPulse(element, true);
+        }
+    }
+
+    function startPulse(element, up) {
+        const animation = element.animation({style: {'overlay-opacity': up ? PULSE.high : PULSE.low}, duration: PULSE.duration, easing: 'ease-in-out-sine'});
+        pulse.element = element;
+        pulse.animation = animation;
+        animation.play().promise('completed').then(() => {
+            if (pulse.animation === animation && !element.removed()) {
+                startPulse(element, !up);
+            }
+        });
+    }
+
+    function stopPulse() {
+        if (pulse.animation) {
+            pulse.animation.stop();
+        }
+        if (pulse.element && !pulse.element.removed()) {
+            pulse.element.removeStyle('overlay-opacity');
+        }
+        pulse.element = null;
+        pulse.animation = null;
     }
 
     function inFocus(edge) {
@@ -262,8 +298,15 @@
             const after = element.renderedPosition();
             cy.panBy({x: before.x - after.x, y: before.y - after.y});
         } else {
-            cy.animate({center: {eles: element}, duration: 200});
+            zoomTo(element);
         }
+    }
+
+    function zoomTo(element) {
+        const box = element.boundingBox();
+        const zoom = Math.min(FOCUS_ZOOM, (cy.width() - 2 * PADDING) / box.w, (cy.height() - 2 * PADDING) / box.h);
+        const center = {x: box.x1 + box.w / 2, y: box.y1 + box.h / 2};
+        cy.animate({zoom, pan: {x: cy.width() / 2 - center.x * zoom, y: cy.height() / 2 - center.y * zoom}, duration: 300});
     }
 
     function edgeChange(changes) {
@@ -288,14 +331,13 @@
         state.selected = id;
         cy.elements().unselect();
         cy.edges().removeClass('highlight');
+        highlightSelected();
         const section = document.getElementById('details');
         const node = id && state.byId.get(id);
         if (!node) {
             section.hidden = true;
             return;
         }
-        cy.getElementById(id).select();
-        cy.getElementById(id).connectedEdges().addClass('highlight');
         section.hidden = false;
         document.getElementById('details-chart').hidden = !node.chart;
         document.getElementById('details-name').textContent = label(node);
