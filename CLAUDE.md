@@ -108,9 +108,9 @@ changed between two commits. It is a core library, a command line, a web viewer 
   neighbours (picking a neighbour moves the centre). Neighbours are one edge away over the enabled edge kinds; a
   selected box counts with everything inside it. Loading a diff of other commits than the shown ones switches to
   Changes and neighbours.
-- Tests: a type or method from a source set whose name holds `test` (`src/test`, `src/integrationTest`) is a test. Unless
-  Tests is ticked, tests, boxes holding only tests, and their edges and changes are hidden, and a box changed inside
-  only by hidden tests is not marked.
+- Tests: a type or method from a source set whose name holds `test` (`src/test`, `src/integrationTest`) is a test.
+  Unless Tests is ticked, tests, boxes holding only tests, and their edges and changes are hidden, and a box changed
+  inside only by hidden tests is not marked.
 - Nodes cannot be dragged; a drag anywhere pans. Expanding keeps the zoom and holds the toggled node in place.
   Selections form a trail with undo and redo (buttons top right, Ctrl+Z, Ctrl+Shift+Z or Ctrl+Y).
 - Source: Ctrl+click, F4 or the Source button opens a node, or an edge with one place; a click on an edge lists its
@@ -135,7 +135,9 @@ changed between two commits. It is a core library, a command line, a web viewer 
 - A commit is picked from a popup that searches every commit reachable from HEAD by hash prefix and message, loads
   them a page at a time as the list scrolls, and also accepts any revision git resolves (branch, tag, `HEAD~3`).
 - "Show in Archflow" in the VCS log's context menu (the bundled plugin `com.intellij.modules.vcs`) shows one selected
-  commit as a single commit, and several as the range from the lowest selected row to the highest.
+  commit as a single commit, and several as the range from the lowest selected row to the highest. Compiling against
+  the VCS log API needs both `bundledPlugin 'com.intellij.platform.vcs'` and `bundledModule
+  'intellij.platform.vcs.shared'` (which holds `Hash`).
 - `archflowOpen` opens the working copy's file, or a read-only copy of the commit's version; a removed node or edge
   opens from the From commit.
 - With To on the working copy, a saved `.java` file under the project rebuilds the model after 1.5 s.
@@ -145,6 +147,11 @@ changed between two commits. It is a core library, a command line, a web viewer 
   the file in the To commit; otherwise only the type is selected. Following the caret leaves the trail as it is.
 - Settings (paths, `minLines`, follow caret) are in `.idea/archflow.xml`; models are cached in the IDE's system
   directory. The platform's `slf4j` is used, so the plugin bundles none.
+
+## README
+
+- `README.md` describes Archflow for its users: features, requirements, build, the command line, modules and
+  limitations. A change users can see (a feature, a command, an option, a limitation) updates it.
 
 ## Tests
 
@@ -158,5 +165,7 @@ changed between two commits. It is a core library, a command line, a web viewer 
 - Source roots are path prefixes, so a log across a commit that moves the sources needs other prefixes and is not
   supported.
 - A method whose name changes shows as removed and added; only a changed parameter list is paired.
+- In the flowchart of a changed method, a changed arm condition shows as one arm removed and one added, an implicit
+  `else` of the old version is not drawn, and a removed step after a new `return` or `throw` has no arrow into it.
 - Kotlin sources, data flow (where values are defined and used), rules checked against the model, and `@Arch`
   annotations naming nodes are not implemented.
