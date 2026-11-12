@@ -137,6 +137,7 @@
         state.data = data;
         document.getElementById('title').textContent = data.title;
         document.getElementById('legend-diff').hidden = !data.beforeCommit;
+        document.getElementById('legend-chart-diff').hidden = !data.beforeCommit;
         document.title = 'Archflow: ' + data.title;
         const select = document.getElementById('view');
         select.replaceChildren(...data.views.map((view, index) => new Option(VIEW_LABELS[view.view] || view.view, index)));
@@ -998,7 +999,8 @@
         chart.cy.resize();
         const elements = node.chart.boxes.map(box => ({group: 'nodes', data: {id: 'b' + box.id, label: boxLabel(box), target: box.target},
             position: {x: 0, y: box.id * CHART_ROW},
-            classes: [box.kind.toLowerCase(), box.target && state.byId.has(box.target) ? 'link' : null].filter(Boolean).join(' ')}));
+            classes: [box.kind.toLowerCase(), box.target && state.byId.has(box.target) ? 'link' : null, box.change && box.change.toLowerCase()]
+                .filter(Boolean).join(' ')}));
         node.chart.arrows.forEach((arrow, index) => elements.push({group: 'edges', data: {id: 'a' + index, source: 'b' + arrow.from, target: 'b' + arrow.to}}));
         chart.cy.batch(() => {
             chart.cy.elements().remove();
@@ -1119,7 +1121,8 @@
             {selector: 'node.call', style: {'color': color('--muted')}},
             {selector: 'node.call.link', style: {'color': color('--link'), 'border-color': color('--link')}},
             {selector: 'node.return', style: {'color': color('--muted')}},
-            {selector: 'node.throw', style: {'border-color': color('--removed'), 'color': color('--removed')}},
+            {selector: 'node.throw', style: {'shape': 'octagon', 'width': node => chartWidth(node, 30)}},
+            ...['added', 'removed', 'inside'].map(change => ({selector: 'node.' + change, style: {'border-width': 2, 'border-color': color('--' + change)}})),
             {selector: 'edge', style: {
                 'curve-style': 'bezier', 'width': 1, 'line-color': color('--muted'), 'target-arrow-color': color('--muted'),
                 'target-arrow-shape': 'triangle', 'arrow-scale': 0.8

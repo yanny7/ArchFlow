@@ -3,6 +3,7 @@ package com.yanny.archflow.model;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -34,12 +35,47 @@ class FlowChartTest {
                 12 END end ->\s""", dump(FlowChart.of(steps)));
     }
 
+    @Test
+    void mergedChartMarksAddedAndRemovedStepsAndTheBranchesAndLoopsHoldingThem() {
+        List<Step> before = List.of(
+                new Step.Call(1, "a.A#first()", "first()", false),
+                new Step.Branch(2, null, List.of(new Step.Arm("x > 0", List.of(new Step.Return(3))))),
+                new Step.Loop(4, "for (int i : items)", List.of(new Step.Call(5, "a.A#log(int)", "log(i)", false))),
+                new Step.Call(6, "a.A#gone()", "gone()", false));
+        List<Step> after = List.of(
+                new Step.Call(1, "a.A#first()", "first()", false),
+                new Step.Call(2, "a.A#second()", "second()", false),
+                new Step.Branch(3, null, List.of(
+                        new Step.Arm("x > 0", List.of(new Step.Return(4))),
+                        new Step.Arm(null, List.of(new Step.Call(5, "a.A#warn()", "warn()", false))))),
+                new Step.Loop(6, "for (int i : items)", List.of(new Step.Call(7, "a.A#log(long)", "log(i)", false))));
+
+        assertEquals("""
+                0 START start -> 1
+                1 CALL a.A#first() -> 2
+                2 CALL a.A#second() [added] -> 3
+                3 BRANCH if [inside] -> 4, 6
+                4 ARM x > 0 -> 5
+                5 RETURN return -> 12
+                6 ARM else [added] -> 7
+                7 CALL a.A#warn() [added] -> 8
+                8 LOOP loop for (int i : items) [inside] -> 9, 11
+                9 CALL a.A#log(int) [removed] -> 10
+                10 CALL a.A#log(long) [added] -> 8
+                11 CALL a.A#gone() [removed] -> 12
+                12 END end ->\s""", dump(FlowChart.of(before, after)));
+    }
+
     private static String dump(FlowChart chart) {
         return chart.boxes().stream()
-                .map(box -> box.id() + " " + box.kind() + " " + box.text() + " -> " + chart.arrows().stream()
+                .map(box -> box.id() + " " + box.kind() + " " + box.text() + change(box) + " -> " + chart.arrows().stream()
                         .filter(arrow -> arrow.from() == box.id())
                         .map(arrow -> String.valueOf(arrow.to()))
                         .collect(Collectors.joining(", ")))
                 .collect(Collectors.joining("\n"));
+    }
+
+    private static String change(FlowChart.Box box) {
+        return box.change() == null ? "" : " [" + box.change().name().toLowerCase(Locale.ROOT) + "]";
     }
 }

@@ -94,7 +94,7 @@ public final class ViewerData {
         return new GraphNode(node.id(), name(node.kind()), node.name(), node.parent(),
                 location == null ? null : location.file(), location == null ? 0 : location.line(), node.lines(),
                 change == null ? null : name(change.change()), change == null ? null : change.previousId(),
-                FlowText.lines(model.flow(node.id())), chart(model.flow(node.id())), location != null && isTest(location.file()));
+                FlowText.lines(model.flow(node.id())), chart(node, model, change), location != null && isTest(location.file()));
     }
 
     static boolean isTest(String file) {
@@ -103,8 +103,10 @@ public final class ViewerData {
         return src >= 0 && src + 2 < parts.size() && parts.get(src + 1).toLowerCase(Locale.ROOT).contains("test");
     }
 
-    private static FlowChart chart(List<Step> flow) {
-        return flow.isEmpty() ? null : FlowChart.of(flow);
+    private static FlowChart chart(Node node, Model model, NodeChange change) {
+        List<Step> flow = model.flow(node.id());
+        List<Step> previous = change != null && change.change() == Change.CHANGED ? change.previousFlow() : flow;
+        return flow.isEmpty() && previous.isEmpty() ? null : FlowChart.of(previous, flow);
     }
 
     private static GraphEdge edge(Edge edge, Change change, Places places) {

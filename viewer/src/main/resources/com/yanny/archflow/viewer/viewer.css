@@ -138,7 +138,6 @@ a:hover { text-decoration: underline; }
 .swatch .package { fill: var(--package); }
 .swatch .type { fill: var(--type); }
 .swatch .link { stroke: var(--link); }
-.swatch .throw { stroke: var(--removed); }
 .swatch .arm { fill: var(--muted); font: italic 10px system-ui, sans-serif; text-anchor: middle; }
 .swatch line { stroke: var(--muted); stroke-width: 1.5; }
 .swatch line + polygon { fill: var(--muted); stroke: none; }
@@ -153,6 +152,9 @@ a:hover { text-decoration: underline; }
 #legend-graph .swatch .inside { stroke: var(--inside-2); }
 #legend-graph .swatch .chosen { stroke: var(--text); stroke-width: 3; }
 #legend-graph .swatch .chosen.changed { stroke: var(--changed); }
+#legend-chart .swatch .added { stroke: var(--added); stroke-width: 2; }
+#legend-chart .swatch .removed { stroke: var(--removed); stroke-width: 2; }
+#legend-chart .swatch .inside { stroke: var(--inside); stroke-width: 2; }
 .swatch .count { fill: var(--text); stroke: none; font: 9px system-ui, sans-serif; text-anchor: middle; }
 .swatch.thick line { stroke-width: 4; }
 .swatch.faded line { stroke: var(--muted-2); stroke-width: 1; }

@@ -37,10 +37,8 @@ public final class ModelDiff {
             Node old = diff.before.get(node.id());
             if (old == null) {
                 diff.changes.put(node.id(), new NodeChange(node, Change.ADDED));
-            } else if (previous.containsKey(node.id())) {
-                diff.changes.put(node.id(), new NodeChange(node, Change.CHANGED, previous.get(node.id())));
-            } else if (!normalize(before.flow(node.id())).equals(normalize(after.flow(node.id())))) {
-                diff.changes.put(node.id(), new NodeChange(node, Change.CHANGED));
+            } else if (previous.containsKey(node.id()) || !normalize(before.flow(node.id())).equals(normalize(after.flow(node.id())))) {
+                diff.changes.put(node.id(), new NodeChange(node, Change.CHANGED, previous.get(node.id()), before.flow(node.id())));
             }
         });
         diff.before.values().stream()

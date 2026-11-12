@@ -85,6 +85,10 @@ codebase is ALI's graph analysis (`ali/common/.../plugin/server/graph`, branch `
   node is removed and added; the one exception is a type that loses one method and gains one of the same name, which
   is one method whose parameters changed. Nodes are added, removed, changed or changed inside; edges added or removed.
   The list of changes leaves out the edges of an added or removed node; the diff itself keeps them for the viewer.
+- **Flowchart of a changed method** merges its flow before and after. Level by level, steps are paired by kind and
+  text (a call by its target, a branch by its subject and its arms by condition, a loop by its header), preferring
+  identical steps. An unpaired step is added or removed and stands in the flow where it was; a paired branch or loop
+  with such a step inside is changed inside.
 - **Performance.** A commit's sources come from git objects; the working copy is never checked out. Facts are cached
   by file content, models by commit and source roots (bump `ModelSource.FORMAT` as its comment says).
 
@@ -114,6 +118,7 @@ codebase is ALI's graph analysis (`ali/common/.../plugin/server/graph`, branch `
   places in the details; a right click offers places and node actions. A picked change of an edge selects both ends
   and draws that edge even when its kind is switched off.
 - A method opens as a flowchart over the graph (double click on a method without children, or the details button).
+  Its boxes take the change colors by border, like nodes; a throw is an octagon.
 - Layout: ELK lays out only the visible part, in a web worker (on the page's thread when no worker starts); a newer
   layout cancels an older one, and a render changes only the elements that appear or go. Any render of over 1000 nodes
   (Everything with many boxes open, Open changes, Show) asks first; a loaded diff whose Changes and neighbours would
