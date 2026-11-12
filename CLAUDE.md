@@ -1,8 +1,7 @@
 # Archflow
 
 Archflow shows the architecture of a Java codebase as one interactive graph with levels, and how that architecture
-changed between two commits. It is a core library, a command line, a web viewer and an IntelliJ plugin. The pilot
-codebase is ALI's graph analysis (`ali/common/.../plugin/server/graph`, branch `ideas/graph`).
+changed between two commits. It is a core library, a command line, a web viewer and an IntelliJ plugin.
 
 ## Commands
 
@@ -70,7 +69,7 @@ codebase is ALI's graph analysis (`ali/common/.../plugin/server/graph`, branch `
   - A lambda or method reference implements the one abstract method of a source interface when its target type shows
     in the syntax: a field or local initialised with it, directly or as an argument of the initializer's call, or a
     `return` of a method returning that type. A method reference then overrides the interface method; a lambda becomes
-    a method inside its enclosing method (`Walker#<clinit>()$lambda1`) with its own flow.
+    a method inside its enclosing method (`a.A#<clinit>()$lambda1`) with its own flow.
   - Flow of each method: its body reduced to calls, branches, loops, returns and throws, with the source text of every
     condition.
   - Sites: every dependency edge keeps the places in the code that make it, each with its kind (call, field, import,
@@ -109,7 +108,7 @@ codebase is ALI's graph analysis (`ali/common/.../plugin/server/graph`, branch `
   neighbours (picking a neighbour moves the centre). Neighbours are one edge away over the enabled edge kinds; a
   selected box counts with everything inside it. Loading a diff of other commits than the shown ones switches to
   Changes and neighbours.
-- Tests: a type or method from a source set whose name holds `test` (`src/test`, `src/gametest`) is a test. Unless
+- Tests: a type or method from a source set whose name holds `test` (`src/test`, `src/integrationTest`) is a test. Unless
   Tests is ticked, tests, boxes holding only tests, and their edges and changes are hidden, and a box changed inside
   only by hidden tests is not marked.
 - Nodes cannot be dragged; a drag anywhere pans. Expanding keeps the zoom and holds the toggled node in place.
